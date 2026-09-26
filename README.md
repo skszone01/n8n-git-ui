@@ -6,6 +6,10 @@
 
 > 🚀 **Live Interactive Demo:** [https://skszone01.github.io/n8n-git-ui/](https://skszone01.github.io/n8n-git-ui/)
 
+<p align="center">
+  <img src="screenshot.png" alt="Git Workflow Graph Preview" width="100%" />
+</p>
+
 [English](#english) | [ภาษาไทย](#ภาษาไทย)
 
 ---
@@ -31,6 +35,7 @@
 
 ```text
 n8n-git-ui/
+├── screenshot.png     # Visual preview of n8n workflow Git DAG
 ├── generate_dag.py    # Python CLI extractor that compiles git DAG & diffs into static JS
 ├── index.html         # High-performance Vanilla JS / HTML5 canvas visualizer
 ├── git_data.js        # Static data payload (window.GIT_DAG_DATA)
