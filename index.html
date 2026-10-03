@@ -1658,6 +1658,20 @@
       if (state.dagData) renderGraph(state.dagData);
     };
 
+    // Auto-poll git_data.js every 2 seconds to seamlessly update graph without manual reload
+    setInterval(() => {
+      const pollScript = document.createElement('script');
+      pollScript.src = 'git_data.js?v=' + Date.now();
+      pollScript.onload = () => {
+        if (window.GIT_DAG_DATA && window.GIT_DAG_DATA.generated_at !== (state.dagData && state.dagData.generated_at)) {
+          state.dagData = window.GIT_DAG_DATA;
+          initDAG();
+        }
+        pollScript.remove();
+      };
+      document.head.appendChild(pollScript);
+    }, 2000);
+
     // Initialize on page load
     initDAG();
   </script>
