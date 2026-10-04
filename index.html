@@ -326,11 +326,12 @@
     }
 
     .cable-pill-bg {
-      fill: #14171f;
+      fill: #1e222a;
       stroke-width: 1.5px;
       rx: 6px;
       ry: 6px;
       pointer-events: auto;
+      filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.75));
     }
 
     /* HTML Nodes Layer */
@@ -927,10 +928,7 @@
     }
   </style>
 
-  <!-- Zero-Server Dynamic Data Injection with Cache Busting -->
-  <script>
-    document.write('<script src="git_data.js?v=' + Date.now() + '"><\/script>');
-  </script>
+  <!-- Dynamic data loaded asynchronously via Dynamic Dual Fallback Loader -->
 </head>
 <body>
 
@@ -944,7 +942,7 @@
       </div>
       <span class="brand-title">Git Workflow Graph</span>
       <div class="zero-server-chip">Zero-Server Mode</div>
-      <div class="zero-server-chip" id="data-updated-chip" style="color:#38bdf8;border-color:rgba(56,189,248,0.3);">Data: Loading...</div>
+      <div class="zero-server-chip" id="data-updated-chip" style="color:#38bdf8;border-color:rgba(56,189,248,0.3);cursor:pointer;" title="Click to toggle live polling">Data: Loading...</div>
       <div class="repo-badge" id="repo-name">repository</div>
       <div class="head-badge">
         <div class="pulse-dot"></div>
@@ -958,9 +956,9 @@
         <input type="text" id="search-input" placeholder="Search commit, branch, author...">
       </div>
 
-      <button class="btn" id="btn-simulate-merge" title="Show simulated merge curve into Master">
+      <button class="btn" id="btn-simulate-merge" title="Show simulated merge curve into Primary Trunk">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 12V4H7v8H2l10 10 10-10h-5z"/></svg>
-        Merge to Master
+        <span id="btn-merge-text">Merge to Trunk</span>
       </button>
 
       <button class="btn btn-primary" id="btn-refresh" title="Reload Page / Refresh Git Data (F5)">
@@ -1020,13 +1018,13 @@
     <div class="drawer-content">
       <div class="drawer-meta-grid">
         <span class="meta-label">Author:</span>
-        <span class="meta-value" id="drawer-author">Sitt Chanel</span>
+        <span class="meta-value" id="drawer-author">—</span>
 
         <span class="meta-label">Date:</span>
-        <span class="meta-value" id="drawer-date">2026-09-08 09:02:52</span>
+        <span class="meta-value" id="drawer-date">—</span>
 
         <span class="meta-label">Parents:</span>
-        <span class="meta-value" id="drawer-parents">b145628</span>
+        <span class="meta-value" id="drawer-parents">—</span>
       </div>
 
       <div class="commit-message-box" id="drawer-message">Commit Message</div>
@@ -1052,6 +1050,8 @@
     // State management
     const state = {
       dagData: window.GIT_DAG_DATA || null,
+      dataSourceMode: null, // 'live' | 'demo'
+      livePollingActive: false,
       selectedNodeId: null,
       panX: 50,
       panY: 50,
@@ -1134,11 +1134,13 @@
 
     function centerOnHead() {
       if (!state.dagData || !state.dagData.nodes.length) return;
-      const headNode = state.dagData.nodes.find(n => n.is_head) || state.dagData.nodes[state.dagData.nodes.length - 1];
-      if (!headNode) return;
+      const targetNode = state.dagData.nodes.find(n => n.is_wip || n.status === 'wip' || n.id === 'working-directory-wip' || n.id === 'active-wip')
+        || state.dagData.nodes.find(n => n.is_head || n.status === 'head')
+        || state.dagData.nodes[state.dagData.nodes.length - 1];
+      if (!targetNode) return;
       state.zoom = 1.0;
-      state.panX = Math.round(canvasContainer.clientWidth / 2 - headNode.x - headNode.width / 2);
-      state.panY = Math.round(canvasContainer.clientHeight / 2 - headNode.y - headNode.height / 2);
+      state.panX = Math.round(canvasContainer.clientWidth / 2 - targetNode.x - targetNode.width / 2);
+      state.panY = Math.round(canvasContainer.clientHeight / 2 - targetNode.y - targetNode.height / 2);
       updateTransform();
     }
 
@@ -1171,23 +1173,33 @@
     // Initialize Data and Render
     function initDAG() {
       if (!state.dagData) {
-        alert('Could not find window.GIT_DAG_DATA! Please run generate_dag.py first.');
+        showCanvasError('Could Not Load Git Graph Data', 'Please make sure git_data.js or demo_data.js exists.');
         return;
       }
       const data = state.dagData;
 
       // Update Header Badges
-      document.getElementById('repo-name').textContent = data.repo;
+      document.getElementById('repo-name').textContent = data.repo || 'repository';
       const headBranchEl = document.getElementById('head-branch-name');
-      headBranchEl.textContent = data.head_branch;
-      headBranchEl.title = `Current HEAD: ${data.head_branch}`;
+      headBranchEl.textContent = data.head_branch || 'main';
+      headBranchEl.title = `Current HEAD: ${data.head_branch || 'main'}`;
 
       const dataUpdatedEl = document.getElementById('data-updated-chip');
-      if (dataUpdatedEl && data.generated_at) {
-        const genDate = new Date(data.generated_at);
-        const timeStr = genDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        dataUpdatedEl.textContent = `Updated: ${timeStr} (${data.nodes.length} commits)`;
-        dataUpdatedEl.title = `Generated at: ${data.generated_at}\nTotal Commits: ${data.nodes.length}\nTotal Edges: ${data.edges.length}`;
+      if (dataUpdatedEl) {
+        if (state.dataSourceMode === 'demo') {
+          dataUpdatedEl.textContent = 'Data: Demo Mode';
+          dataUpdatedEl.style.color = '#f59e0b';
+          dataUpdatedEl.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+        } else {
+          dataUpdatedEl.textContent = state.livePollingActive ? 'Data: Live Local (Live)' : 'Data: Live Local';
+          dataUpdatedEl.style.color = '#10b981';
+          dataUpdatedEl.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        }
+        if (data.generated_at) {
+          const genDate = new Date(data.generated_at);
+          const timeStr = genDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          dataUpdatedEl.title = `${state.dataSourceMode === 'demo' ? 'Demo Mode' : 'Live Local'}\nGenerated at: ${timeStr} (${data.nodes.length} commits, ${(data.edges || []).length} edges)\nClick to toggle Live Polling`;
+        }
       }
 
       renderGraph(data);
@@ -1233,8 +1245,13 @@
         }
       });
 
-      // 1.1 Master Trunk Forward Extension along Lane 0 (Runs parallel to keep pace with branches)
-      const masterTip = data.nodes.find(n => n.branches && n.branches.includes('master'));
+      // 1.1 Primary Trunk Forward Extension along Lane 0 (Runs parallel to keep pace with branches)
+      const primary = (data && data.primary_branch) || (data.nodes.some(n => n.branches && n.branches.includes('main')) ? 'main' : 'master');
+      const masterTip = data.nodes.find(n => n.branches && (n.branches.includes(primary) || n.branches.includes('master') || n.branches.includes('main')));
+      
+      const btnMergeText = document.getElementById('btn-merge-text');
+      if (btnMergeText) btnMergeText.textContent = `Merge to ${primary.toUpperCase()}`;
+
       if (masterTip) {
         const x1 = masterTip.x + masterTip.width;
         const y1 = masterTip.y + masterTip.height / 2;
@@ -1253,15 +1270,15 @@
 
           renderCablePill({
             svg_path: extPath,
-            label: 'MASTER (MAIN TRUNK)',
+            label: `${primary.toUpperCase()} (MAIN TRUNK)`,
             color: '#06b6d4'
           });
         }
       }
 
-      // 1.2 Render Simulated Merge to Master ONLY IF explicitly toggled by user
+      // 1.2 Render Simulated Merge to Primary Trunk ONLY IF explicitly toggled by user
       if (state.showSimulatedMerge) {
-        const headNode = data.nodes.find(n => n.is_head);
+        const headNode = data.nodes.find(n => n.is_head || n.status === 'head');
         if (headNode && masterTip && headNode.lane !== 0) {
           const x1 = headNode.x + headNode.width;
           const y1 = headNode.y + headNode.height / 2;
@@ -1281,7 +1298,7 @@
             from: headNode.id,
             to: masterTip.id,
             svg_path: simPath,
-            label: 'SIMULATED MERGE TO MASTER',
+            label: `SIMULATED MERGE TO ${primary.toUpperCase()}`,
             color: '#10b981'
           };
           renderCablePill(simEdge, true);
@@ -1290,16 +1307,24 @@
 
       // 2. Render Node Cards
       data.nodes.forEach(node => {
+        const title = node.title || node.subject || node.short_id || (node.id ? node.id.slice(0, 7) : 'commit');
+        const shortId = node.short_id || node.short_hash || (node.id ? node.id.slice(0, 7) : '');
+        const author = node.author_name || node.author || (node.author_full ? node.author_full.split('<')[0].trim() : 'Unknown');
+        const isWip = Boolean(node.is_wip || node.status === 'wip' || node.id === 'working-directory-wip' || node.id === 'active-wip');
+        const isHead = Boolean(node.is_head || node.status === 'head');
+        const isMerge = Boolean(node.is_merge || node.status === 'merge');
+
         let isMatch = true;
         if (query) {
           const filePaths = (state.dagData.diffs && state.dagData.diffs[node.id] && state.dagData.diffs[node.id].files)
             ? state.dagData.diffs[node.id].files.map(f => f.path).join(' ') : '';
-          const content = `${node.title} ${node.short_id} ${node.author} ${node.branches.join(' ')} ${filePaths}`.toLowerCase();
+          const content = `${title} ${shortId} ${author} ${(node.branches || []).join(' ')} ${filePaths}`.toLowerCase();
           isMatch = content.includes(query);
         }
 
         const card = document.createElement('div');
-        card.className = `n8n-node ${node.is_wip ? 'node-wip' : ''} ${node.is_head ? 'node-head' : ''} ${state.selectedNodeId === node.id ? 'selected' : ''}`;
+        card.dataset.id = node.id;
+        card.className = `n8n-node ${isWip ? 'node-wip' : ''} ${isHead ? 'node-head' : ''} ${state.selectedNodeId === node.id ? 'selected' : ''}`;
         if (!isMatch) card.style.opacity = '0.25';
         card.style.left = `${node.x}px`;
         card.style.top = `${node.y}px`;
@@ -1314,13 +1339,13 @@
         iconBox.innerHTML = getNodeIcon(node);
 
         const statusBadge = document.createElement('div');
-        if (node.is_wip || node.status === 'wip') {
+        if (isWip) {
           statusBadge.className = 'node-status-badge status-wip';
           statusBadge.innerHTML = '✎';
-        } else if (node.is_head) {
+        } else if (isHead) {
           statusBadge.className = 'node-status-badge status-check';
           statusBadge.innerHTML = '✓';
-        } else if (node.is_merge) {
+        } else if (isMerge) {
           statusBadge.className = 'node-status-badge status-merge';
           statusBadge.innerHTML = '☊';
         } else {
@@ -1334,26 +1359,36 @@
 
         const titleEl = document.createElement('div');
         titleEl.className = 'node-title';
-        titleEl.textContent = node.title;
-        titleEl.title = node.title;
+        titleEl.textContent = title;
+        titleEl.title = title;
 
         const subEl = document.createElement('div');
         subEl.className = 'node-subtitle';
-        if (node.is_wip) {
+        if (isWip) {
           subEl.innerHTML = `<span style="color:#fbbf24;font-weight:700;">● UNCOMMITTED</span> • <span>Working Tree</span>`;
-          subEl.title = `Local uncommitted changes (${node.title})`;
+          subEl.title = `Local uncommitted changes (${title})`;
         } else {
-          subEl.innerHTML = `<span>#${node.short_id}</span> • <span>${formatDate(node.date)}</span>`;
-          subEl.title = `Commit #${node.short_id} by ${node.author} (${node.date})`;
+          subEl.innerHTML = '';
+          const idSpan = document.createElement('span');
+          idSpan.textContent = `#${shortId}`;
+          const dotText = document.createTextNode(' • ');
+          const dateSpan = document.createElement('span');
+          dateSpan.textContent = formatDate(node.date);
+          subEl.appendChild(idSpan);
+          subEl.appendChild(dotText);
+          subEl.appendChild(dateSpan);
+          subEl.title = `Commit #${shortId} by ${author} (${node.date || ''})`;
         }
 
         const branchBox = document.createElement('div');
         branchBox.className = 'node-branches';
 
-        // Sort branches: prioritize master, current head branch, then others
-        const sortedBranches = [...node.branches].sort((a, b) => {
-          if (a === 'master') return -1;
-          if (b === 'master') return 1;
+        // Sort branches: prioritize primary trunk (main/master), current head branch, then others
+        const sortedBranches = [...(node.branches || [])].sort((a, b) => {
+          const isTrunkA = (a === primary || a === 'master' || a === 'main');
+          const isTrunkB = (b === primary || b === 'master' || b === 'main');
+          if (isTrunkA) return -1;
+          if (isTrunkB) return 1;
           if (state.dagData && a === state.dagData.head_branch) return -1;
           if (state.dagData && b === state.dagData.head_branch) return 1;
           return 0;
@@ -1366,9 +1401,9 @@
         visibleBranches.forEach(b => {
           const pill = document.createElement('span');
           let pillClass = 'pill-feature';
-          if (b.startsWith('WIP') || node.is_wip) pillClass = 'pill-wip';
-          else if (b === 'master') pillClass = 'pill-master';
-          else if (node.is_head) pillClass = 'pill-head';
+          if (b.startsWith('WIP') || isWip) pillClass = 'pill-wip';
+          else if (b === primary || b === 'master' || b === 'main') pillClass = 'pill-master';
+          else if (isHead) pillClass = 'pill-head';
 
           pill.className = `branch-pill ${pillClass}`;
           // Trim redundant 'feature/' prefix to save card horizontal space
@@ -1387,7 +1422,7 @@
 
         bodyEl.appendChild(titleEl);
         bodyEl.appendChild(subEl);
-        if (node.branches.length) {
+        if (node.branches && node.branches.length) {
           bodyEl.appendChild(branchBox);
         }
 
@@ -1418,42 +1453,73 @@
       };
     }
 
-    // Check if a pill at (px, py) with width pw collides with any horizontal wire from another branch
-    function findCollidingHorizontalWire(px, py, pw, currentEdge) {
-      if (!state.dagData || !state.dagData.edges) return null;
-      const halfW = pw / 2 + 8;
+    // Collect all horizontal wire segments across the entire DAG (including trunk extensions & highway track)
+    function getAllHorizontalSegments(excludeEdge) {
+      const segments = [];
+      if (!state.dagData) return segments;
 
-      for (const e of state.dagData.edges) {
-        if (e === currentEdge) continue;
-        const mC = e.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+C\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+)/);
-        const mL = e.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+L\s+([-\d.]+)\s+([-\d.]+)/);
-        let x1, y1, x2, y2;
-        if (mC) {
-          x1 = parseFloat(mC[1]); y1 = parseFloat(mC[2]);
-          x2 = parseFloat(mC[7]); y2 = parseFloat(mC[8]);
-        } else if (mL) {
-          x1 = parseFloat(mL[1]); y1 = parseFloat(mL[2]);
-          x2 = parseFloat(mL[3]); y2 = parseFloat(mL[4]);
-        }
-        if (x1 !== undefined && Math.abs(y1 - y2) < 4) {
-          const minX = Math.min(x1, x2);
-          const maxX = Math.max(x1, x2);
-          if (px + halfW >= minX && px - halfW <= maxX) {
-            if (Math.abs(py - y1) < 18) {
-              return { y: y1, minX, maxX };
+      // 1. Regular edges from dagData
+      if (state.dagData.edges) {
+        for (const e of state.dagData.edges) {
+          if (e === excludeEdge) continue;
+          const mC = e.svg_path ? e.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+C\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+)/) : null;
+          const mL = e.svg_path ? e.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+L\s+([-\d.]+)\s+([-\d.]+)/) : null;
+          if (mC) {
+            const x1 = parseFloat(mC[1]), y1 = parseFloat(mC[2]);
+            const x2 = parseFloat(mC[7]), y2 = parseFloat(mC[8]);
+            if (Math.abs(y1 - y2) < 4) {
+              segments.push({ y: (y1 + y2) / 2, minX: Math.min(x1, x2), maxX: Math.max(x1, x2), color: e.color });
+            } else {
+              // Cubic bezier curves have horizontal tangency near their start and endpoints
+              const dx = Math.abs(x2 - x1) * 0.45;
+              segments.push({ y: y1, minX: Math.min(x1, x1 + dx * 0.4), maxX: Math.max(x1, x1 + dx * 0.4), color: e.color });
+              segments.push({ y: y2, minX: Math.min(x2 - dx * 0.4, x2), maxX: Math.max(x2 - dx * 0.4, x2), color: e.color });
+            }
+          } else if (mL) {
+            const x1 = parseFloat(mL[1]), y1 = parseFloat(mL[2]);
+            const x2 = parseFloat(mL[3]), y2 = parseFloat(mL[4]);
+            if (Math.abs(y1 - y2) < 4) {
+              segments.push({ y: (y1 + y2) / 2, minX: Math.min(x1, x2), maxX: Math.max(x1, x2), color: e.color });
             }
           }
         }
       }
 
-      // Also check Master Center Track if present
+      // 2. Primary Trunk Forward Extension along Lane 0
+      const primary = (state.dagData && state.dagData.primary_branch) || (state.dagData && state.dagData.nodes && state.dagData.nodes.some(n => n.branches && n.branches.includes('main')) ? 'main' : 'master');
+      const masterTip = state.dagData && state.dagData.nodes && state.dagData.nodes.find(n => n.branches && (n.branches.includes(primary) || n.branches.includes('master') || n.branches.includes('main')));
+      if (masterTip && state.dagData.nodes && state.dagData.nodes.length) {
+        const x1 = masterTip.x + masterTip.width;
+        const y1 = masterTip.y + masterTip.height / 2;
+        const allX = state.dagData.nodes.map(n => n.x + n.width);
+        const x2 = Math.max(...allX) + 80;
+        if (x2 > x1 + 20) {
+          segments.push({ y: y1, minX: x1, maxX: x2, color: '#06b6d4' });
+        }
+      }
+
+      // 3. Master Center Highway Guide Track
       const masterY = state.dagData.master_y;
-      if (masterY !== undefined && Math.abs(py - masterY) < 18) {
-        if (state.dagData.nodes && state.dagData.nodes.length) {
-          const minX = Math.min(...state.dagData.nodes.map(n => n.x));
-          const maxX = Math.max(...state.dagData.nodes.map(n => n.x + (n.width || 300)));
-          if (px + halfW >= minX && px - halfW <= maxX) {
-            return { y: masterY, minX, maxX };
+      if (masterY !== undefined && state.dagData.nodes && state.dagData.nodes.length) {
+        const minX = Math.min(...state.dagData.nodes.map(n => n.x)) - 60;
+        const maxX = Math.max(...state.dagData.nodes.map(n => n.x + (n.width || 300))) + 320;
+        segments.push({ y: masterY, minX, maxX, color: '#06b6d4' });
+      }
+
+      return segments;
+    }
+
+    // Check if a pill at (px, py) with width pw collides with any horizontal wire from another branch
+    function findCollidingHorizontalWire(px, py, pw, currentEdge) {
+      if (!state.dagData) return null;
+      const segments = getAllHorizontalSegments(currentEdge);
+      const halfW = pw / 2 + 10;
+      const COLLISION_THRESHOLD = 26; // Vertical distance considered a collision
+
+      for (const seg of segments) {
+        if (px + halfW >= seg.minX && px - halfW <= seg.maxX) {
+          if (Math.abs(py - seg.y) < COLLISION_THRESHOLD) {
+            return seg;
           }
         }
       }
@@ -1463,9 +1529,10 @@
 
     function renderCablePill(edge, isSimulated = false) {
       let points = [];
-      const pillWidth = edge.label.length * 6.8 + 16;
-      const matchC = edge.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+C\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+)/);
-      const matchL = edge.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+L\s+([-\d.]+)\s+([-\d.]+)/);
+      const pillWidth = Math.max((edge.label || '').length * 7.2 + 20, 52);
+      const CLEARANCE = 34; // Increased clearance distance (34px) to completely prevent overlapping
+      const matchC = edge.svg_path ? edge.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+C\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+)/) : null;
+      const matchL = edge.svg_path ? edge.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+L\s+([-\d.]+)\s+([-\d.]+)/) : null;
 
       if (matchC) {
         const x1 = parseFloat(matchC[1]), y1 = parseFloat(matchC[2]);
@@ -1476,46 +1543,49 @@
         // Default: exact midpoint at t = 0.5
         let mid = getBezierPoint(0.5, x1, y1, cx1, cy1, cx2, cy2, x2, y2);
 
-        // If edge transitions vertically between lanes, prevent overlapping intermediate branch lines
-        if (Math.abs(y2 - y1) > 10) {
-          const collidingWire = findCollidingHorizontalWire(mid.x, mid.y, pillWidth, edge);
-          if (collidingWire) {
-            // Target shift: 28px clearance from colliding wire
-            const shiftOffset = 28;
-            const targetUpY = mid.y - shiftOffset;
-            const targetDownY = mid.y + shiftOffset;
+        // Check if pill collides with any horizontal wire from another branch or trunk
+        const collidingWire = findCollidingHorizontalWire(mid.x, mid.y, pillWidth, edge);
+        if (collidingWire) {
+          // Preferred direction:
+          // If curve goes downward (y2 > y1), prefer shifting UP towards branch origin
+          // If curve goes upward (y2 < y1), prefer shifting DOWN towards branch origin
+          const preferUp = (y2 >= y1);
+          const targetUpY = collidingWire.y - CLEARANCE;
+          const targetDownY = collidingWire.y + CLEARANCE;
+          let chosenTargetY = preferUp ? targetUpY : targetDownY;
 
-            // Preferred direction:
-            // If curve goes downward (y2 > y1), prefer shifting UP towards branch origin
-            // If curve goes upward (y2 < y1), prefer shifting DOWN towards branch origin
-            const preferUp = (y2 >= y1);
-            let chosenTargetY = preferUp ? targetUpY : targetDownY;
-
-            // Check if preferred direction collides with another wire; if so, flip
-            if (findCollidingHorizontalWire(mid.x, chosenTargetY, pillWidth, edge)) {
-              chosenTargetY = preferUp ? targetDownY : targetUpY;
-            }
-
-            // Find t along curve closest to chosenTargetY so pill stays centered on curve
-            let bestT = 0.5;
-            let minDiff = Infinity;
-            for (let step = 20; step <= 80; step++) {
-              const tCand = step / 100;
-              const pt = getBezierPoint(tCand, x1, y1, cx1, cy1, cx2, cy2, x2, y2);
-              const diff = Math.abs(pt.y - chosenTargetY);
-              if (diff < minDiff) {
-                minDiff = diff;
-                bestT = tCand;
-              }
-            }
-
-            const candidatePt = getBezierPoint(bestT, x1, y1, cx1, cy1, cx2, cy2, x2, y2);
-            // Guarantee minimum vertical clearance
-            if (Math.abs(candidatePt.y - collidingWire.y) < 22) {
-              candidatePt.y = (chosenTargetY < collidingWire.y) ? (collidingWire.y - 26) : (collidingWire.y + 26);
-            }
-            mid = candidatePt;
+          // Check if preferred direction collides with another wire; if so, flip
+          if (findCollidingHorizontalWire(mid.x, chosenTargetY, pillWidth, edge)) {
+            chosenTargetY = preferUp ? targetDownY : targetUpY;
           }
+
+          // Find t along curve closest to chosenTargetY so pill stays centered on curve
+          let bestT = 0.5;
+          let minDiff = Infinity;
+          for (let step = 15; step <= 85; step++) {
+            const tCand = step / 100;
+            const pt = getBezierPoint(tCand, x1, y1, cx1, cy1, cx2, cy2, x2, y2);
+            const diff = Math.abs(pt.y - chosenTargetY);
+            if (diff < minDiff) {
+              minDiff = diff;
+              bestT = tCand;
+            }
+          }
+
+          const candidatePt = getBezierPoint(bestT, x1, y1, cx1, cy1, cx2, cy2, x2, y2);
+          
+          // Guarantee minimum vertical clearance from the colliding wire
+          if (Math.abs(candidatePt.y - collidingWire.y) < CLEARANCE) {
+            candidatePt.y = (chosenTargetY < collidingWire.y) ? (collidingWire.y - CLEARANCE) : (collidingWire.y + CLEARANCE);
+          }
+
+          // Double check if candidatePt still intersects ANY horizontal wire
+          const residualCollision = findCollidingHorizontalWire(candidatePt.x, candidatePt.y, pillWidth, edge);
+          if (residualCollision) {
+            candidatePt.y = (candidatePt.y <= residualCollision.y) ? (residualCollision.y - CLEARANCE) : (residualCollision.y + CLEARANCE);
+          }
+
+          mid = candidatePt;
         }
 
         points.push(mid);
@@ -1532,11 +1602,9 @@
         }
 
         rawPoints.forEach(pt => {
-          if (Math.abs(y1 - y2) > 10) {
-            const wire = findCollidingHorizontalWire(pt.x, pt.y, pillWidth, edge);
-            if (wire) {
-              pt.y += (y2 >= y1) ? -26 : 26;
-            }
+          const wire = findCollidingHorizontalWire(pt.x, pt.y, pillWidth, edge);
+          if (wire) {
+            pt.y += (pt.y <= wire.y) ? -CLEARANCE : CLEARANCE;
           }
           points.push(pt);
         });
@@ -1544,10 +1612,21 @@
         const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         pathEl.setAttribute('d', edge.svg_path);
         const len = pathEl.getTotalLength ? pathEl.getTotalLength() : 200;
-        points.push(pathEl.getPointAtLength ? pathEl.getPointAtLength(len * 0.5) : { x: 0, y: 0 });
+        const pt = pathEl.getPointAtLength ? pathEl.getPointAtLength(len * 0.5) : { x: 0, y: 0 };
+        const wire = findCollidingHorizontalWire(pt.x, pt.y, pillWidth, edge);
+        if (wire) {
+          pt.y += (pt.y <= wire.y) ? -CLEARANCE : CLEARANCE;
+        }
+        points.push(pt);
       }
 
       points.forEach(mid => {
+        // Final sanity clearance check against all horizontal wires
+        const sanityWire = findCollidingHorizontalWire(mid.x, mid.y, pillWidth, edge);
+        if (sanityWire) {
+          mid.y += (mid.y <= sanityWire.y) ? -CLEARANCE : CLEARANCE;
+        }
+
         const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         g.setAttribute('transform', `translate(${mid.x}, ${mid.y})`);
 
@@ -1555,19 +1634,25 @@
         titleTag.textContent = edge.label;
         g.appendChild(titleTag);
 
+        const w = pillWidth;
+        const h = 22;
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('class', 'cable-pill-bg');
+        rect.setAttribute('x', -w / 2);
+        rect.setAttribute('y', -h / 2);
+        rect.setAttribute('width', w);
+        rect.setAttribute('height', h);
+        rect.setAttribute('rx', '6');
+        rect.setAttribute('ry', '6');
+        rect.setAttribute('fill', '#1e222a');
+        rect.setAttribute('stroke', edge.color || '#38bdf8');
+        rect.setAttribute('stroke-width', '1.5');
+
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('class', 'cable-pill');
         text.textContent = edge.label;
         if (isSimulated) text.style.fill = '#34d399';
-
-        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        const w = edge.label.length * 6.8 + 16;
-        rect.setAttribute('class', 'cable-pill-bg');
-        rect.setAttribute('x', -w / 2);
-        rect.setAttribute('y', -10);
-        rect.setAttribute('width', w);
-        rect.setAttribute('height', 20);
-        rect.setAttribute('stroke', edge.color || '#475569');
 
         g.appendChild(rect);
         g.appendChild(text);
@@ -1576,13 +1661,13 @@
     }
 
     function getNodeIcon(node) {
-      if (node.is_wip || node.status === 'wip') {
+      if (node.is_wip || node.status === 'wip' || node.id === 'working-directory-wip' || node.id === 'active-wip') {
         return `<svg viewBox="0 0 24 24" fill="#f59e0b"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
       }
-      if (node.is_head) {
+      if (node.is_head || node.status === 'head') {
         return `<svg viewBox="0 0 24 24" fill="#10b981"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
       }
-      if (node.is_merge) {
+      if (node.is_merge || node.status === 'merge') {
         return `<svg viewBox="0 0 24 24" fill="#a855f7"><path d="M17 20.41L18.41 19 15 15.59 13.59 17 17 20.41zM7.5 4C6.12 4 5 5.12 5 6.5S6.12 9 7.5 9 10 7.88 10 6.5 8.88 4 7.5 4zm0 2c.28 0 .5.22.5.5s-.22.5-.5.5-.5-.22-.5-.5.22-.5.5-.5zm9 5c-1.38 0-2.5 1.12-2.5 2.5 0 1.05.66 1.95 1.58 2.31l-3.08 3.08c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l3.09-3.09c.36.92 1.26 1.58 2.31 1.58 1.38 0 2.5-1.12 2.5-2.5s-1.12-2.5-2.5-2.5zm0 3c-.28 0-.5-.22-.5-.5s.22-.5.5-.5.5.22.5.5-.22.5-.5.5z"/></svg>`;
       }
       if (node.lane === 0) {
@@ -1606,28 +1691,33 @@
       state.selectedNodeId = node.id;
       
       document.querySelectorAll('.n8n-node').forEach(el => el.classList.remove('selected'));
-      const activeCard = Array.from(document.querySelectorAll('.n8n-node')).find(el => el.textContent.includes(node.short_id));
+      const activeCard = document.querySelector(`.n8n-node[data-id="${node.id}"]`);
       if (activeCard) activeCard.classList.add('selected');
 
-      const isWip = (node.id === 'working-directory-wip' || node.is_wip);
+      const isWip = Boolean(node.id === 'working-directory-wip' || node.id === 'active-wip' || node.is_wip || node.status === 'wip');
+      const shortId = node.short_id || node.short_hash || (node.id ? node.id.slice(0, 7) : '');
+      const title = node.title || node.subject || shortId || (node.id ? node.id.slice(0, 7) : 'commit');
+      const authorFull = node.author_full || (node.author_name ? `${node.author_name} <${node.author_email || ''}>` : (node.author || 'Unknown'));
+
       const hashEl = document.getElementById('drawer-hash-text');
-      hashEl.textContent = isWip ? 'WIP (Uncommitted)' : node.id.substring(0, 12);
+      hashEl.textContent = isWip ? 'WIP (Uncommitted)' : (shortId || node.id.substring(0, 12));
       hashEl.title = node.id;
-      document.getElementById('drawer-author').textContent = isWip ? 'Local Working Tree' : node.author_full;
-      document.getElementById('drawer-date').textContent = isWip ? 'Current Local Changes' : node.date;
-      document.getElementById('drawer-parents').textContent = node.parents.map(p => p.substring(0, 7)).join(', ') || 'Root';
+      document.getElementById('drawer-author').textContent = isWip ? 'Local Working Tree' : authorFull;
+      document.getElementById('drawer-date').textContent = isWip ? 'Current Local Changes' : (node.date || '');
+      document.getElementById('drawer-parents').textContent = (node.parents || []).map(p => p.substring(0, 7)).join(', ') || 'Root';
       const msgEl = document.getElementById('drawer-message');
-      msgEl.textContent = node.title;
-      msgEl.title = node.title;
+      msgEl.textContent = title;
+      msgEl.title = title;
 
       const tagBox = document.getElementById('drawer-branch-tags');
       tagBox.innerHTML = '';
-      node.branches.forEach(b => {
+      const primary = (state.dagData && state.dagData.primary_branch) || (state.dagData && state.dagData.nodes && state.dagData.nodes.some(n => n.branches && n.branches.includes('main')) ? 'main' : 'master');
+      (node.branches || []).forEach(b => {
         const pill = document.createElement('span');
         let pillClass = 'pill-feature';
-        if (b.startsWith('WIP') || node.is_wip) pillClass = 'pill-wip';
-        else if (b === 'master') pillClass = 'pill-master';
-        else if (node.is_head) pillClass = 'pill-head';
+        if (b.startsWith('WIP') || isWip) pillClass = 'pill-wip';
+        else if (b === primary || b === 'master' || b === 'main') pillClass = 'pill-master';
+        else if (node.is_head || node.status === 'head') pillClass = 'pill-head';
 
         pill.className = `branch-pill ${pillClass}`;
         pill.textContent = b;
@@ -1749,16 +1839,18 @@
       }
     };
 
-    // Search Filtering
+    // Search Filtering (with 150ms debounce)
+    let searchDebounceTimer = null;
     searchInput.oninput = () => {
-      if (state.dagData) renderGraph(state.dagData);
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        if (state.dagData) renderGraph(state.dagData);
+      }, 150);
     };
 
-    // Manual Refresh (F5 / button)
+    // Manual Refresh button
     btnRefresh.onclick = () => {
-      const url = new URL(window.location.href);
-      url.searchParams.set('t', Date.now());
-      window.location.href = url.toString();
+      loadDAGData();
     };
 
     // Simulate Merge Toggle
@@ -1769,22 +1861,153 @@
       if (state.dagData) renderGraph(state.dagData);
     };
 
-    // Auto-poll git_data.js every 2 seconds to seamlessly update graph without manual reload
+    // Live Polling Gating:
+    // Only poll git_data.js if URL contains ?live=1 or #live or if user toggles live mode.
+    // Interval is set to 5000ms (5s).
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('live') === '1' || window.location.hash.includes('live')) {
+      state.livePollingActive = true;
+    }
+
+    function toggleLiveMode() {
+      state.livePollingActive = !state.livePollingActive;
+      const dataChip = document.getElementById('data-updated-chip');
+      if (dataChip) {
+        if (state.dataSourceMode === 'demo') {
+          dataChip.textContent = state.livePollingActive ? 'Data: Demo Mode (Poll: On)' : 'Data: Demo Mode';
+        } else {
+          dataChip.textContent = state.livePollingActive ? 'Data: Live Local (Live)' : 'Data: Live Local';
+        }
+      }
+    }
+
+    const dataChipEl = document.getElementById('data-updated-chip');
+    if (dataChipEl) {
+      dataChipEl.onclick = () => {
+        toggleLiveMode();
+      };
+    }
+
+    let isPolling = false;
     setInterval(() => {
+      if (!state.livePollingActive) return;
+      if (isPolling) return;
+      isPolling = true;
+
       const pollScript = document.createElement('script');
       pollScript.src = 'git_data.js?v=' + Date.now();
       pollScript.onload = () => {
+        isPolling = false;
+        pollScript.remove();
         if (window.GIT_DAG_DATA && window.GIT_DAG_DATA.generated_at !== (state.dagData && state.dagData.generated_at)) {
           state.dagData = window.GIT_DAG_DATA;
+          state.dataSourceMode = 'live';
           initDAG();
         }
+      };
+      pollScript.onerror = () => {
+        isPolling = false;
         pollScript.remove();
       };
       document.head.appendChild(pollScript);
-    }, 2000);
+    }, 5000);
 
-    // Initialize on page load
-    initDAG();
+    // Dynamic Dual Fallback Loader:
+    // 1. Attempt git_data.js -> if success: "Data: Live Local" (green/cyan) -> initDAG()
+    // 2. Fallback to demo_data.js -> if success: "Data: Demo Mode" (amber/orange) -> initDAG()
+    // 3. Fallback error state rendered cleanly on canvas
+    function loadDAGData() {
+      const dataChip = document.getElementById('data-updated-chip');
+      if (dataChip) {
+        dataChip.textContent = 'Data: Loading...';
+        dataChip.style.color = '#38bdf8';
+        dataChip.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+      }
+
+      function injectScript(src, onSuccess, onError) {
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.onload = () => {
+          s.remove();
+          onSuccess();
+        };
+        s.onerror = () => {
+          s.remove();
+          onError();
+        };
+        document.head.appendChild(s);
+      }
+
+      const v = Date.now();
+      // First attempt: git_data.js
+      injectScript('git_data.js?v=' + v, () => {
+        if (window.GIT_DAG_DATA && window.GIT_DAG_DATA.nodes && window.GIT_DAG_DATA.nodes.length) {
+          state.dagData = window.GIT_DAG_DATA;
+          state.dataSourceMode = 'live';
+          if (dataChip) {
+            dataChip.textContent = state.livePollingActive ? 'Data: Live Local (Live)' : 'Data: Live Local';
+            dataChip.style.color = '#10b981';
+            dataChip.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+          }
+          initDAG();
+        } else {
+          loadDemoFallback();
+        }
+      }, () => {
+        loadDemoFallback();
+      });
+
+      function loadDemoFallback() {
+        injectScript('demo_data.js?v=' + Date.now(), () => {
+          if (window.GIT_DAG_DATA && window.GIT_DAG_DATA.nodes && window.GIT_DAG_DATA.nodes.length) {
+            state.dagData = window.GIT_DAG_DATA;
+            state.dataSourceMode = 'demo';
+            if (dataChip) {
+              dataChip.textContent = 'Data: Demo Mode';
+              dataChip.style.color = '#f59e0b';
+              dataChip.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+            }
+            initDAG();
+          } else {
+            showCanvasError('Could Not Load Graph Data', 'Neither git_data.js nor demo_data.js could be populated. Please generate DAG data using python generate_dag.py.');
+          }
+        }, () => {
+          showCanvasError('Data Not Found', 'Could not load git_data.js or demo_data.js.<br>Please run <code>python generate_dag.py</code> inside your repository.');
+        });
+      }
+    }
+
+    function showCanvasError(title, message) {
+      const dataChip = document.getElementById('data-updated-chip');
+      if (dataChip) {
+        dataChip.textContent = 'Data: Failed';
+        dataChip.style.color = '#f87171';
+        dataChip.style.borderColor = 'rgba(248, 113, 113, 0.4)';
+      }
+      nodesLayer.innerHTML = `
+        <div style="position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%);
+                    background: #1e222a; border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 12px;
+                    padding: 32px 40px; text-align: center; max-width: 520px; box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+                    pointer-events: auto;">
+          <div style="width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%;
+                      background: rgba(248, 113, 113, 0.12); display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="#f87171">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>
+          </div>
+          <h3 style="font-size: 18px; font-weight: 700; color: #f8fafc; margin-bottom: 8px;">${title}</h3>
+          <p style="font-size: 13px; color: #94a3b8; line-height: 1.6; margin-bottom: 20px;">${message}</p>
+          <button onclick="loadDAGData()" style="background: #06b6d4; color: #fff; border: none;
+                  padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+            Retry Loading
+          </button>
+        </div>
+      `;
+    }
+
+    // Initialize on page load via Dynamic Dual Fallback Loader
+    loadDAGData();
   </script>
 </body>
 </html>

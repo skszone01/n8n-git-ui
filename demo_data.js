@@ -74,7 +74,8 @@ window.GIT_DAG_DATA = {
       "y": 560,
       "width": 300,
       "height": 88,
-      "status": "master"
+      "status": "master",
+      "is_wip": false
     },
     {
       "id": "b200002000000000000000000000000000000002",
@@ -97,7 +98,8 @@ window.GIT_DAG_DATA = {
       "y": 560,
       "width": 300,
       "height": 88,
-      "status": "master"
+      "status": "master",
+      "is_wip": false
     },
     {
       "id": "c300003000000000000000000000000000000003",
@@ -122,7 +124,8 @@ window.GIT_DAG_DATA = {
       "y": 352,
       "width": 300,
       "height": 88,
-      "status": "normal"
+      "status": "normal",
+      "is_wip": false
     },
     {
       "id": "d400004000000000000000000000000000000004",
@@ -145,7 +148,8 @@ window.GIT_DAG_DATA = {
       "y": 560,
       "width": 300,
       "height": 88,
-      "status": "master"
+      "status": "master",
+      "is_wip": false
     },
     {
       "id": "e500005000000000000000000000000000000005",
@@ -171,7 +175,8 @@ window.GIT_DAG_DATA = {
       "y": 560,
       "width": 300,
       "height": 88,
-      "status": "master"
+      "status": "master",
+      "is_wip": false
     },
     {
       "id": "f600006000000000000000000000000000000006",
@@ -196,7 +201,8 @@ window.GIT_DAG_DATA = {
       "y": 768,
       "width": 300,
       "height": 88,
-      "status": "normal"
+      "status": "normal",
+      "is_wip": false
     },
     {
       "id": "a700007000000000000000000000000000000007",
@@ -219,7 +225,8 @@ window.GIT_DAG_DATA = {
       "y": 560,
       "width": 300,
       "height": 88,
-      "status": "master"
+      "status": "master",
+      "is_wip": false
     },
     {
       "id": "b800008000000000000000000000000000000008",
@@ -244,7 +251,8 @@ window.GIT_DAG_DATA = {
       "y": 976,
       "width": 300,
       "height": 88,
-      "status": "normal"
+      "status": "normal",
+      "is_wip": false
     },
     {
       "id": "c900009000000000000000000000000000000009",
@@ -269,7 +277,8 @@ window.GIT_DAG_DATA = {
       "y": 768,
       "width": 300,
       "height": 88,
-      "status": "branch_tip"
+      "status": "branch_tip",
+      "is_wip": false
     },
     {
       "id": "d000010000000000000000000000000000000010",
@@ -296,7 +305,8 @@ window.GIT_DAG_DATA = {
       "y": 560,
       "width": 300,
       "height": 88,
-      "status": "master"
+      "status": "master",
+      "is_wip": false
     },
     {
       "id": "active-wip",
@@ -568,5 +578,7 @@ window.GIT_DAG_DATA = {
       ],
       "full_output": "diff --git a/src/billing/stripe.ts b/src/billing/stripe.ts\n--- a/src/billing/stripe.ts\n+++ b/src/billing/stripe.ts\n@@ -12,3 +12,7 @@\n+export async function cancelSubscription(id: string) {\n+  return stripe.subscriptions.update(id, { cancel_at_period_end: true });\n+}\n\n=== Untracked New Files ===\n+ tests/billing_test.ts"
     }
-  }
+  },
+  "schema_version": 2,
+  "primary_branch": "main"
 };

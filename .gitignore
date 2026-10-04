@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 
@@ -11,5 +12,7 @@ ehthumbs.db
 # Logs
 *.log
 
-# Local data backups
+# Local data backups and temporary files
+*.tmp
+git_data.js
 *.local*.js

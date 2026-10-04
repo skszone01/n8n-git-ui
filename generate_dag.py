@@ -14,43 +14,53 @@ import os
 import sys
 import json
 import subprocess
+import argparse
 from datetime import datetime
 from collections import deque
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_JS = os.path.join(CURRENT_DIR, "git_data.js")
 
-# Determine REPO_ROOT: CLI argument > parent repo > current dir
-if len(sys.argv) > 1 and os.path.isdir(sys.argv[1]):
-    REPO_ROOT = os.path.abspath(sys.argv[1])
-else:
+def find_repo_root(custom_path=None):
+    if custom_path and os.path.isdir(custom_path):
+        return os.path.abspath(custom_path)
     candidate_parent2 = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
     candidate_parent1 = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
     if os.path.exists(os.path.join(candidate_parent2, ".git")):
-        REPO_ROOT = candidate_parent2
+        return candidate_parent2
     elif os.path.exists(os.path.join(candidate_parent1, ".git")):
-        REPO_ROOT = candidate_parent1
+        return candidate_parent1
     elif os.path.exists(os.path.join(CURRENT_DIR, ".git")):
-        REPO_ROOT = CURRENT_DIR
+        return CURRENT_DIR
     else:
-        REPO_ROOT = os.getcwd()
+        return os.getcwd()
 
-OUTPUT_JS = os.path.join(CURRENT_DIR, "git_data.js")
+REPO_ROOT = find_repo_root()
 
-def run_git(args):
-    """Run a git command in REPO_ROOT and return stdout."""
+def run_git(args, cwd=None):
+    """Run a git command in REPO_ROOT (or cwd) and return stdout."""
+    target_dir = cwd or REPO_ROOT
     try:
         res = subprocess.run(
-            ["git", "-c", "core.quotepath=false", "-C", REPO_ROOT] + args,
+            ["git", "-c", "core.quotepath=false", "-C", target_dir] + args,
             capture_output=True,
             text=True,
             encoding="utf-8",
             errors="replace"
         )
+        if res.returncode != 0:
+            err_msg = res.stderr.strip() if res.stderr else f"exit code {res.returncode}"
+            sys.stderr.write(f"[WARNING] git {' '.join(args)} failed: {err_msg}\n")
         return res.stdout
-    except Exception:
+    except Exception as e:
+        sys.stderr.write(f"[WARNING] Failed to execute git {' '.join(args)}: {e}\n")
         return ""
 
-def generate():
+def generate(repo_path=None, max_count=None):
+    global REPO_ROOT
+    if repo_path:
+        REPO_ROOT = find_repo_root(repo_path)
+
     # 1. Working tree status
     status_raw = run_git(["status", "--porcelain"])
     dirty_lines = [l.strip() for l in status_raw.splitlines() if l.strip()]
@@ -91,10 +101,13 @@ def generate():
             tags.setdefault(parts[1].strip().lstrip("*"), []).append(parts[0].strip())
 
     # 4. Commits
-    log_raw = run_git([
+    log_args = [
         "log", "--branches", "--topo-order",
         "--format=%H|||%h|||%P|||%an|||%ae|||%aI|||%s|||%D###ENDRECORD###"
-    ])
+    ]
+    if max_count is not None and max_count > 0:
+        log_args.extend(["-n", str(max_count)])
+    log_raw = run_git(log_args)
 
     commits = {}
     for rec in log_raw.split("###ENDRECORD###"):
@@ -155,7 +168,10 @@ def generate():
         commit_lane_color[c] = "#06b6d4"
 
     # 6. Topological Ordering (Parents ALWAYS appear before Children on X-axis)
-    topo_raw = run_git(["log", "--branches", "--topo-order", "--reverse", "--format=%H"])
+    topo_args = ["log", "--branches", "--topo-order", "--reverse", "--format=%H"]
+    if max_count is not None and max_count > 0:
+        topo_args.extend(["-n", str(max_count)])
+    topo_raw = run_git(topo_args)
     topo_order = [s.strip() for s in topo_raw.splitlines() if s.strip() and s.strip() in commits]
     for c in commits:
         if c not in topo_order:
@@ -321,9 +337,12 @@ def generate():
         nodes.append({
             "id": c,
             "hash": c,
+            "short_id": c_data["short_hash"],
             "short_hash": c_data["short_hash"],
+            "title": c_data["subject"],
             "subject": c_data["subject"],
             "author": c_data["author_name"],
+            "author_full": c_data["author"],
             "date": c_data["date"],
             "branches": c_data["branches"],
             "tags": c_data["tags"],
@@ -335,7 +354,10 @@ def generate():
             "y": y,
             "width": NODE_WIDTH,
             "height": NODE_HEIGHT,
-            "status": status
+            "status": status,
+            "is_head": c_data["is_head"],
+            "is_merge": c_data["is_merge"],
+            "is_wip": False
         })
 
     # 8. Dynamic WIP Node for Current Active Branch Working Directory
@@ -363,12 +385,16 @@ def generate():
             active_wip_y = BASE_Y + wip_lane * (NODE_HEIGHT + Y_SPACING)
             coords[active_wip_id] = (active_wip_x, active_wip_y)
 
+            wip_title = f"Working Tree ({len(dirty_lines)} uncommitted changes)"
             nodes.append({
                 "id": active_wip_id,
                 "hash": active_wip_id,
+                "short_id": "WIP",
                 "short_hash": "WIP",
-                "subject": f"Working Tree ({len(dirty_lines)} uncommitted changes)",
+                "title": wip_title,
+                "subject": wip_title,
                 "author": "Local Working Directory",
+                "author_full": "Local Working Tree <uncommitted>",
                 "date": datetime.now().isoformat(),
                 "branches": [head_branch] if head_branch else [],
                 "tags": [],
@@ -380,7 +406,10 @@ def generate():
                 "y": active_wip_y,
                 "width": NODE_WIDTH,
                 "height": NODE_HEIGHT,
-                "status": "wip"
+                "status": "wip",
+                "is_head": False,
+                "is_merge": False,
+                "is_wip": True
             })
 
     # 9. Edges with Bézier Connections
@@ -551,7 +580,9 @@ def generate():
     merged_to_primary = set([b.strip().replace("*", "").strip() for b in merged_to_primary_raw.splitlines() if b.strip()])
 
     bundle = {
+        "schema_version": 2,
         "repo": os.path.basename(REPO_ROOT),
+        "primary_branch": primary_branch,
         "head_branch": head_branch,
         "head_commit": branches.get(head_branch, {}).get("hash", head_rev),
         "master_y": BASE_Y + (NODE_HEIGHT / 2),
@@ -583,10 +614,20 @@ def generate():
     }
 
     js_content = f"/* Auto-generated Git DAG Data */\nwindow.GIT_DAG_DATA = {json.dumps(bundle, ensure_ascii=False, indent=2)};\n"
-    with open(OUTPUT_JS, "w", encoding="utf-8") as f:
+    tmp_output = OUTPUT_JS + ".tmp"
+    with open(tmp_output, "w", encoding="utf-8") as f:
         f.write(js_content)
+    os.replace(tmp_output, OUTPUT_JS)
 
     print(f"Successfully generated git_data.js ({len(nodes)} commits, {len(edges)} edges) at {datetime.now().strftime('%H:%M:%S')}")
 
+def main():
+    parser = argparse.ArgumentParser(description="Standalone Git DAG Generator for n8n-style UI")
+    parser.add_argument("repo_path", nargs="?", default=None, help="Path to Git repository (optional)")
+    parser.add_argument("-n", "--max-count", type=int, default=None, help="Limit commit count (default: all commits)")
+    args = parser.parse_args()
+
+    generate(repo_path=args.repo_path, max_count=args.max_count)
+
 if __name__ == "__main__":
-    generate()
+    main()
