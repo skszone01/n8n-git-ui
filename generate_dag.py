@@ -56,7 +56,7 @@ def run_git(args, cwd=None):
         sys.stderr.write(f"[WARNING] Failed to execute git {' '.join(args)}: {e}\n")
         return ""
 
-def generate(repo_path=None, max_count=None):
+def generate(repo_path=None, max_count=None, output_path=None):
     global REPO_ROOT
     if repo_path:
         REPO_ROOT = find_repo_root(repo_path)
@@ -614,20 +614,22 @@ def generate(repo_path=None, max_count=None):
     }
 
     js_content = f"/* Auto-generated Git DAG Data */\nwindow.GIT_DAG_DATA = {json.dumps(bundle, ensure_ascii=False, indent=2)};\n"
-    tmp_output = OUTPUT_JS + ".tmp"
+    target_output = os.path.abspath(output_path) if output_path else OUTPUT_JS
+    tmp_output = target_output + ".tmp"
     with open(tmp_output, "w", encoding="utf-8") as f:
         f.write(js_content)
-    os.replace(tmp_output, OUTPUT_JS)
+    os.replace(tmp_output, target_output)
 
-    print(f"Successfully generated git_data.js ({len(nodes)} commits, {len(edges)} edges) at {datetime.now().strftime('%H:%M:%S')}")
+    print(f"Successfully generated {os.path.basename(target_output)} for repository '{os.path.basename(REPO_ROOT)}' ({len(nodes)} commits, {len(edges)} edges, {len(branches)} branches) at {datetime.now().strftime('%H:%M:%S')}")
 
 def main():
     parser = argparse.ArgumentParser(description="Standalone Git DAG Generator for n8n-style UI")
     parser.add_argument("repo_path", nargs="?", default=None, help="Path to Git repository (optional)")
     parser.add_argument("-n", "--max-count", type=int, default=None, help="Limit commit count (default: all commits)")
+    parser.add_argument("-o", "--output", default=None, help="Output JS file path (default: git_data.js)")
     args = parser.parse_args()
 
-    generate(repo_path=args.repo_path, max_count=args.max_count)
+    generate(repo_path=args.repo_path, max_count=args.max_count, output_path=args.output)
 
 if __name__ == "__main__":
     main()
