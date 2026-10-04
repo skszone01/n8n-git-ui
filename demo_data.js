@@ -329,7 +329,7 @@ window.GIT_DAG_DATA = {
       "lane": 1,
       "lane_name": "feature/stripe-v3 (WIP)",
       "lane_color": "#10b981",
-      "x": 3585,
+      "x": 3690,
       "y": 768,
       "width": 300,
       "height": 88,
@@ -455,7 +455,7 @@ window.GIT_DAG_DATA = {
       "is_to_master": false,
       "color": "#10b981",
       "label": "UNCOMMITTED WORK",
-      "svg_path": "M 3500 812.0 L 3585 812.0"
+      "svg_path": "M 3500 812.0 L 3690 812.0"
     }
   ],
   "diffs": {

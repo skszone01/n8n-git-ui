@@ -288,7 +288,9 @@
       stroke-width: 2.8px;
       stroke-linecap: round;
       stroke-linejoin: round;
-      transition: stroke 0.15s, stroke-width 0.15s;
+      transition: opacity 0.2s ease, stroke-width 0.2s ease, filter 0.2s ease;
+      pointer-events: stroke;
+      cursor: pointer;
     }
 
     .cable-path.normal {
@@ -341,6 +343,61 @@
       ry: 6px;
       pointer-events: auto;
       filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.75));
+    }
+
+    .cable-pill-group {
+      cursor: pointer;
+      transition: opacity 0.2s ease, transform 0.2s ease, filter 0.2s ease;
+      pointer-events: auto;
+    }
+
+    /* Interactive Branch Highlighting */
+    .branch-highlight-active .cable-path.cable-dimmed {
+      opacity: 0.08 !important;
+      stroke-width: 1.5px !important;
+      filter: none !important;
+    }
+
+    .branch-highlight-active .cable-path.cable-highlighted {
+      opacity: 1 !important;
+      stroke-width: 5.5px !important;
+      filter: drop-shadow(0 0 10px currentColor) drop-shadow(0 0 2px #ffffff) !important;
+    }
+
+    .branch-highlight-active .cable-pill-group.pill-dimmed {
+      opacity: 0.1 !important;
+      filter: grayscale(80%) !important;
+    }
+
+    .branch-highlight-active .cable-pill-group.pill-highlighted {
+      opacity: 1 !important;
+      filter: drop-shadow(0 0 12px currentColor) !important;
+    }
+
+    .branch-highlight-active .cable-pill-group.pill-highlighted .cable-pill-bg {
+      stroke-width: 2.5px !important;
+      stroke: #ffffff !important;
+    }
+
+    .branch-highlight-active .n8n-node.node-dimmed {
+      opacity: 0.2 !important;
+    }
+
+    .branch-highlight-active .n8n-node.node-highlighted {
+      opacity: 1 !important;
+      box-shadow: 0 0 24px rgba(56, 189, 248, 0.55) !important;
+      border-color: #38bdf8 !important;
+    }
+
+    .branch-highlight-active .branch-pill.pill-dimmed {
+      opacity: 0.2 !important;
+    }
+
+    .branch-highlight-active .branch-pill.pill-highlighted {
+      opacity: 1 !important;
+      transform: scale(1.08) !important;
+      filter: brightness(1.35) drop-shadow(0 0 5px currentColor) !important;
+      box-shadow: 0 0 8px currentColor !important;
     }
 
     /* HTML Nodes Layer */
@@ -546,7 +603,7 @@
       max-width: 110px;
       overflow: hidden;
       border: 1px solid;
-      cursor: help;
+      cursor: pointer;
       flex-shrink: 1;
       line-height: 1.25;
       transition: all 0.15s ease;
@@ -1240,11 +1297,149 @@
       centerOnHead();
     }
 
+    // Interactive Branch Highlighting System
+    function normalizeBranch(name) {
+      if (!name) return '';
+      return String(name).trim().toLowerCase()
+        .replace(/^feature\//, '')
+        .replace(/^origin\//, '')
+        .replace(/^branch:\s*/i, '')
+        .replace(/^merge:\s*/i, '')
+        .replace(/\s*\(main trunk\)$/i, '')
+        .replace(/\s*trunk$/i, '')
+        .replace(/\s*\(wip\)$/i, '');
+    }
+
+    function getEdgeBranch(edge) {
+      if (edge.branch) return edge.branch;
+      if (edge.label) {
+        if (/^BRANCH:/i.test(edge.label)) return edge.label.replace(/^BRANCH:\s*/i, '').trim();
+        if (/^MERGE:/i.test(edge.label)) return edge.label.replace(/^MERGE:\s*/i, '').trim();
+        if (/MAIN|MASTER|TRUNK/i.test(edge.label)) return 'main';
+        if (/UNCOMMITTED/i.test(edge.label)) {
+          const wipNode = state.dagData && state.dagData.nodes && state.dagData.nodes.find(n => n.id === 'active-wip' || n.id === 'working-directory-wip');
+          if (wipNode && wipNode.branches && wipNode.branches.length) return wipNode.branches[0];
+          return (state.dagData && state.dagData.head_branch) || 'wip';
+        }
+      }
+      if (state.dagData && state.dagData.nodes) {
+        const toNode = state.dagData.nodes.find(n => n.id === edge.to);
+        if (toNode && toNode.lane_name) return toNode.lane_name;
+        if (toNode && toNode.branches && toNode.branches.length) return toNode.branches[0];
+        const fromNode = state.dagData.nodes.find(n => n.id === edge.from);
+        if (fromNode && fromNode.lane_name) return fromNode.lane_name;
+        if (fromNode && fromNode.branches && fromNode.branches.length) return fromNode.branches[0];
+      }
+      return '';
+    }
+
+    function highlightBranch(rawBranch) {
+      if (!rawBranch) return;
+      const target = normalizeBranch(rawBranch);
+      if (!target) return;
+
+      canvasContainer.classList.add('branch-highlight-active');
+      const isPrimaryTarget = (target === 'main' || target === 'master');
+
+      // 1. Highlight / Dim Cable Paths
+      const allPaths = cablesGroup.querySelectorAll('.cable-path');
+      allPaths.forEach(p => {
+        const pBranch = normalizeBranch(p.dataset.branch || '');
+        const isMatch = (pBranch === target) || (isPrimaryTarget && (pBranch === 'main' || pBranch === 'master'));
+        if (isMatch) {
+          p.classList.add('cable-highlighted');
+          p.classList.remove('cable-dimmed');
+          cablesGroup.appendChild(p);
+        } else {
+          p.classList.remove('cable-highlighted');
+          p.classList.add('cable-dimmed');
+        }
+      });
+
+      // 2. Highlight / Dim Cable Pills
+      const allPills = pillsGroup.querySelectorAll('.cable-pill-group');
+      allPills.forEach(pill => {
+        const pillBranch = normalizeBranch(pill.dataset.branch || '');
+        const isMatch = (pillBranch === target) || (isPrimaryTarget && (pillBranch === 'main' || pillBranch === 'master'));
+        if (isMatch) {
+          pill.classList.add('pill-highlighted');
+          pill.classList.remove('pill-dimmed');
+          pillsGroup.appendChild(pill);
+        } else {
+          pill.classList.remove('pill-highlighted');
+          pill.classList.add('pill-dimmed');
+        }
+      });
+
+      // 3. Highlight / Dim Node Cards
+      const allCards = nodesLayer.querySelectorAll('.n8n-node');
+      allCards.forEach(card => {
+        const nodeId = card.dataset.id;
+        const node = state.dagData && state.dagData.nodes && state.dagData.nodes.find(n => n.id === nodeId);
+        let nodeMatches = false;
+        if (node) {
+          const nodeBranches = (node.branches || []).map(b => normalizeBranch(b));
+          const laneBranch = normalizeBranch(node.lane_name || '');
+          if (nodeBranches.includes(target) || laneBranch === target) {
+            nodeMatches = true;
+          } else if (isPrimaryTarget && (node.lane === 0 || nodeBranches.includes('main') || nodeBranches.includes('master'))) {
+            nodeMatches = true;
+          }
+        }
+        if (nodeMatches) {
+          card.classList.add('node-highlighted');
+          card.classList.remove('node-dimmed');
+        } else {
+          card.classList.remove('node-highlighted');
+          card.classList.add('node-dimmed');
+        }
+
+        const cardBranchPills = card.querySelectorAll('.branch-pill');
+        cardBranchPills.forEach(bp => {
+          const bpBranch = normalizeBranch(bp.dataset.branch || bp.textContent || '');
+          const bpMatch = (bpBranch === target) || (isPrimaryTarget && (bpBranch === 'main' || bpBranch === 'master'));
+          if (bpMatch) {
+            bp.classList.add('pill-highlighted');
+            bp.classList.remove('pill-dimmed');
+          } else {
+            bp.classList.remove('pill-highlighted');
+            bp.classList.add('pill-dimmed');
+          }
+        });
+      });
+    }
+
+    function clearBranchHighlight() {
+      canvasContainer.classList.remove('branch-highlight-active');
+
+      const allPaths = cablesGroup.querySelectorAll('.cable-path');
+      allPaths.forEach(p => {
+        p.classList.remove('cable-highlighted', 'cable-dimmed');
+      });
+
+      const allPills = pillsGroup.querySelectorAll('.cable-pill-group');
+      allPills.forEach(pill => {
+        pill.classList.remove('pill-highlighted', 'pill-dimmed');
+      });
+
+      const allCards = nodesLayer.querySelectorAll('.n8n-node');
+      allCards.forEach(card => {
+        card.classList.remove('node-highlighted', 'node-dimmed');
+        const cardBranchPills = card.querySelectorAll('.branch-pill');
+        cardBranchPills.forEach(bp => {
+          bp.classList.remove('pill-highlighted', 'pill-dimmed');
+        });
+      });
+    }
+
+    let placedPills = [];
+
     // Render Canvas Nodes and Bezier Connections
     function renderGraph(data) {
       nodesLayer.innerHTML = '';
       cablesGroup.innerHTML = '';
       pillsGroup.innerHTML = '';
+      placedPills = [];
 
       const query = (searchInput.value || '').toLowerCase().trim();
 
@@ -1271,6 +1466,12 @@
         pathEl.setAttribute('d', edge.svg_path);
         pathEl.setAttribute('class', `cable-path ${edge.type}`);
         pathEl.setAttribute('stroke', edge.color || '#06b6d4');
+        const edgeBranch = getEdgeBranch(edge);
+        pathEl.dataset.branch = edgeBranch;
+
+        pathEl.addEventListener('mouseenter', () => highlightBranch(edgeBranch));
+        pathEl.addEventListener('mouseleave', clearBranchHighlight);
+
         cablesGroup.appendChild(pathEl);
 
         // Midpoint pill label
@@ -1305,6 +1506,9 @@
         extPathEl.setAttribute('stroke', '#06b6d4');
         extPathEl.setAttribute('stroke-width', '3');
         extPathEl.setAttribute('stroke-dasharray', '8 5');
+        extPathEl.dataset.branch = primary;
+        extPathEl.addEventListener('mouseenter', () => highlightBranch(primary));
+        extPathEl.addEventListener('mouseleave', clearBranchHighlight);
         cablesGroup.appendChild(extPathEl);
 
         // Position pill at least 42px away from the right edge of masterTip node card
@@ -1313,6 +1517,7 @@
           svg_path: extPath,
           label: labelText,
           color: '#06b6d4',
+          branch: primary,
           fixed_x: pillX,
           fixed_y: y1
         });
@@ -1334,6 +1539,9 @@
           simPathEl.setAttribute('class', 'cable-path merge');
           simPathEl.setAttribute('stroke', '#10b981');
           simPathEl.setAttribute('stroke-dasharray', '8 4');
+          simPathEl.dataset.branch = primary;
+          simPathEl.addEventListener('mouseenter', () => highlightBranch(primary));
+          simPathEl.addEventListener('mouseleave', clearBranchHighlight);
           cablesGroup.appendChild(simPathEl);
 
           const simEdge = {
@@ -1341,7 +1549,8 @@
             to: masterTip.id,
             svg_path: simPath,
             label: `SIMULATED MERGE TO ${primary.toUpperCase()}`,
-            color: '#10b981'
+            color: '#10b981',
+            branch: primary
           };
           renderCablePill(simEdge, true);
         }
@@ -1370,6 +1579,12 @@
         if (!isMatch) card.style.opacity = '0.25';
         card.style.left = `${node.x}px`;
         card.style.top = `${node.y}px`;
+
+        const cardPrimaryBranch = (node.branches && node.branches.length) ? node.branches[0] : (node.lane_name || '');
+        if (cardPrimaryBranch) {
+          card.addEventListener('mouseenter', () => highlightBranch(cardPrimaryBranch));
+          card.addEventListener('mouseleave', clearBranchHighlight);
+        }
 
         const portIn = document.createElement('div');
         portIn.className = 'node-port port-in';
@@ -1448,9 +1663,20 @@
           else if (isHead) pillClass = 'pill-head';
 
           pill.className = `branch-pill ${pillClass}`;
+          pill.dataset.branch = b;
           // Trim redundant 'feature/' prefix to save card horizontal space
           pill.textContent = b.replace(/^feature\//, '');
           pill.title = `Branch: ${b}`;
+
+          pill.addEventListener('mouseenter', (e) => {
+            e.stopPropagation();
+            highlightBranch(b);
+          });
+          pill.addEventListener('mouseleave', (e) => {
+            e.stopPropagation();
+            clearBranchHighlight();
+          });
+
           branchBox.appendChild(pill);
         });
 
@@ -1601,8 +1827,15 @@
         const cx2 = parseFloat(matchC[5]), cy2 = parseFloat(matchC[6]);
         const x2 = parseFloat(matchC[7]), y2 = parseFloat(matchC[8]);
 
-        // Default: exact midpoint at t = 0.5
-        let mid = getBezierPoint(0.5, x1, y1, cx1, cy1, cx2, cy2, x2, y2);
+        const curveSpan = Math.abs(x2 - x1);
+        let defaultT = 0.5;
+        // For long curves (>600px wide), placing label at t=0.5 drifts thousands of px away,
+        // colliding with other branches downstream. Anchor near fork at t=0.20!
+        if (curveSpan > 600 && edge.type === 'branch_out') {
+          defaultT = 0.20;
+        }
+
+        let mid = getBezierPoint(defaultT, x1, y1, cx1, cy1, cx2, cy2, x2, y2);
 
         // Check if pill collides with any horizontal wire from another branch or trunk
         const collidingWire = findCollidingHorizontalWire(mid.x, mid.y, pillWidth, edge);
@@ -1621,9 +1854,11 @@
           }
 
           // Find t along curve closest to chosenTargetY so pill stays centered on curve
-          let bestT = 0.5;
+          let bestT = defaultT;
           let minDiff = Infinity;
-          for (let step = 15; step <= 85; step++) {
+          const minStep = (curveSpan > 600) ? 10 : 15;
+          const maxStep = (curveSpan > 600) ? 40 : 85;
+          for (let step = minStep; step <= maxStep; step++) {
             const tCand = step / 100;
             const pt = getBezierPoint(tCand, x1, y1, cx1, cy1, cx2, cy2, x2, y2);
             const diff = Math.abs(pt.y - chosenTargetY);
@@ -1659,7 +1894,10 @@
           rawPoints.push({ x: x1 + dist * 0.28, y: (y1 + y2) / 2 });
           rawPoints.push({ x: x1 + dist * 0.65, y: (y1 + y2) / 2 });
         } else {
-          rawPoints.push({ x: (x1 + x2) / 2, y: (y1 + y2) / 2 });
+          // If distance between nodes is tight, float pill cleanly above the wire
+          const isTight = (dist < pillWidth + 30);
+          const yPos = isTight ? ((y1 + y2) / 2 - 26) : ((y1 + y2) / 2);
+          rawPoints.push({ x: (x1 + x2) / 2, y: yPos });
         }
 
         rawPoints.forEach(pt => {
@@ -1681,6 +1919,8 @@
         points.push(pt);
       }
 
+      const edgeBranch = getEdgeBranch(edge);
+
       points.forEach(mid => {
         // Final sanity clearance check against all horizontal wires
         const sanityWire = findCollidingHorizontalWire(mid.x, mid.y, pillWidth, edge);
@@ -1691,15 +1931,36 @@
         // Final sanity clearance check against all node cards to ensure no card covers this pill
         const hitNode = findCollidingNodeCard(mid.x, mid.y, pillWidth, 24);
         if (hitNode) {
-          if (mid.x >= hitNode.x + hitNode.width / 2) {
-            mid.x = Math.max(mid.x, hitNode.x + hitNode.width + pillWidth / 2 + 28);
+          // Float cleanly above the card rather than pushing horizontally into the card!
+          mid.y = hitNode.y - 18;
+        }
+
+        // Pill-vs-Pill collision avoidance: prevent any two pills from overlapping
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const collidesWithPill = placedPills.find(p => 
+            Math.abs(p.x - mid.x) < (p.width + pillWidth) / 2 + 10 &&
+            Math.abs(p.y - mid.y) < 22
+          );
+          if (collidesWithPill) {
+            if (mid.y >= collidesWithPill.y) {
+              mid.y = collidesWithPill.y + 26;
+            } else {
+              mid.y = collidesWithPill.y - 26;
+            }
           } else {
-            mid.x = Math.min(mid.x, hitNode.x - pillWidth / 2 - 28);
+            break;
           }
         }
+        placedPills.push({ x: mid.x, y: mid.y, width: pillWidth, height: 24 });
 
         const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         g.setAttribute('transform', `translate(${mid.x}, ${mid.y})`);
+        g.setAttribute('class', 'cable-pill-group');
+        g.dataset.branch = edgeBranch;
+
+        // Hover events for interactive branch highlighting
+        g.addEventListener('mouseenter', () => highlightBranch(edgeBranch));
+        g.addEventListener('mouseleave', clearBranchHighlight);
 
         const titleTag = document.createElementNS('http://www.w3.org/2000/svg', 'title');
         titleTag.textContent = edge.label;
@@ -1722,6 +1983,7 @@
 
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('class', 'cable-pill');
+        text.style.pointerEvents = 'none';
         text.textContent = edge.label;
         if (isSimulated) text.style.fill = '#34d399';
 
@@ -1791,8 +2053,11 @@
         else if (node.is_head || node.status === 'head') pillClass = 'pill-head';
 
         pill.className = `branch-pill ${pillClass}`;
+        pill.dataset.branch = b;
         pill.textContent = b;
-        pill.title = b;
+        pill.title = `Branch: ${b}`;
+        pill.addEventListener('mouseenter', () => highlightBranch(b));
+        pill.addEventListener('mouseleave', clearBranchHighlight);
         tagBox.appendChild(pill);
       });
 

@@ -367,7 +367,8 @@ def generate(repo_path=None, max_count=None, output_path=None):
         if head_commit_sha and head_commit_sha in coords:
             active_wip_id = "active-wip"
             h_x, h_y = coords[head_commit_sha]
-            active_wip_x = h_x + NODE_WIDTH + X_SPACING
+            WIP_SPACING = max(X_SPACING + 95, 180)
+            active_wip_x = h_x + NODE_WIDTH + WIP_SPACING
             if head_branch != primary_branch and head_branch != "DETACHED":
                 if commit_lane.get(head_commit_sha, 0) != 0:
                     wip_lane = commit_lane[head_commit_sha]
@@ -442,29 +443,35 @@ def generate(repo_path=None, max_count=None, output_path=None):
                 edge_type = "merge"
                 color = "#10b981"
                 label = f"MERGE TO {primary_branch.upper()}"
+                edge_branch = commit_lane_name.get(p, "branch")
             elif c_data["is_merge"] and idx >= 1:
                 edge_type = "merge"
                 color = "#10b981"
                 p_name = commit_lane_name.get(p, "branch").replace("feature/", "")
                 label = f"MERGE: {p_name}"
+                edge_branch = commit_lane_name.get(p, "branch")
             elif p_lane == 0 and c_lane != 0:
                 edge_type = "branch_out"
                 color = commit_lane_color[c]
                 c_name = commit_lane_name.get(c, "branch").replace("feature/", "")
                 label = f"BRANCH: {c_name}"
+                edge_branch = commit_lane_name.get(c, "branch")
             elif p_lane != c_lane:
                 edge_type = "branch_out"
                 color = commit_lane_color[c]
                 c_name = commit_lane_name.get(c, "branch").replace("feature/", "")
                 label = f"BRANCH: {c_name}"
+                edge_branch = commit_lane_name.get(c, "branch")
             elif c_lane == 0:
                 edge_type = "normal"
                 color = "#06b6d4"
                 label = primary_branch.upper()
+                edge_branch = primary_branch
             else:
                 edge_type = "normal"
                 color = commit_lane_color[c]
                 label = ""
+                edge_branch = commit_lane_name.get(c, "branch")
 
             edge_key = (p, c)
             if edge_key not in edge_set:
@@ -474,6 +481,7 @@ def generate(repo_path=None, max_count=None, output_path=None):
                     "from": p,
                     "to": c,
                     "type": edge_type,
+                    "branch": edge_branch,
                     "is_to_master": (c_lane == 0),
                     "color": color,
                     "label": label,
@@ -503,6 +511,7 @@ def generate(repo_path=None, max_count=None, output_path=None):
                 "from": m_from,
                 "to": m_to,
                 "type": "master-trunk",
+                "branch": primary_branch,
                 "is_to_master": True,
                 "color": "#06b6d4",
                 "label": f"{primary_branch.upper()} TRUNK",
@@ -531,6 +540,7 @@ def generate(repo_path=None, max_count=None, output_path=None):
                 "from": head_commit_sha,
                 "to": active_wip_id,
                 "type": "wip",
+                "branch": head_branch,
                 "is_to_master": (wip_lane == 0),
                 "color": wip_lane_color,
                 "label": "UNCOMMITTED WORK",
