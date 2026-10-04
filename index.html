@@ -274,6 +274,15 @@
       z-index: 10;
     }
 
+    svg.pills-layer-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      overflow: visible;
+      pointer-events: none;
+      z-index: 25;
+    }
+
     .cable-path {
       fill: none;
       stroke-width: 2.8px;
@@ -1001,11 +1010,15 @@
           </filter>
         </defs>
         <g id="cables-group"></g>
-        <g id="pills-group"></g>
       </svg>
 
       <!-- HTML Nodes Layer -->
       <div class="nodes-layer" id="nodes-layer"></div>
+
+      <!-- SVG Pills & Labels Layer (Elevated above HTML cards layer so cards never cover labels) -->
+      <svg class="connections-svg pills-layer-svg" id="pills-svg" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+        <g id="pills-group"></g>
+      </svg>
 
     </div>
   </div>
@@ -1277,24 +1290,32 @@
         const x1 = masterTip.x + masterTip.width;
         const y1 = masterTip.y + masterTip.height / 2;
         const allX = data.nodes.map(n => n.x + n.width);
-        const x2 = Math.max(...allX) + 80;
+        const maxNodeX = Math.max(...allX);
+        const labelText = `${primary.toUpperCase()} (MAIN TRUNK)`;
+        const pillW = Math.max(labelText.length * 7.5 + 24, 150);
 
-        if (x2 > x1 + 20) {
-          const extPath = `M ${x1} ${y1} L ${x2} ${y1}`;
-          const extPathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          extPathEl.setAttribute('d', extPath);
-          extPathEl.setAttribute('class', 'cable-path master-trunk');
-          extPathEl.setAttribute('stroke', '#06b6d4');
-          extPathEl.setAttribute('stroke-width', '3');
-          extPathEl.setAttribute('stroke-dasharray', '8 5');
-          cablesGroup.appendChild(extPathEl);
+        // Ensure extension line always extends far enough to give pill plenty of breathing room
+        const minExtensionLength = pillW + 180;
+        const x2 = Math.max(maxNodeX + 220, x1 + minExtensionLength);
 
-          renderCablePill({
-            svg_path: extPath,
-            label: `${primary.toUpperCase()} (MAIN TRUNK)`,
-            color: '#06b6d4'
-          });
-        }
+        const extPath = `M ${x1} ${y1} L ${x2} ${y1}`;
+        const extPathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        extPathEl.setAttribute('d', extPath);
+        extPathEl.setAttribute('class', 'cable-path master-trunk');
+        extPathEl.setAttribute('stroke', '#06b6d4');
+        extPathEl.setAttribute('stroke-width', '3');
+        extPathEl.setAttribute('stroke-dasharray', '8 5');
+        cablesGroup.appendChild(extPathEl);
+
+        // Position pill at least 42px away from the right edge of masterTip node card
+        const pillX = Math.max(x1 + 42 + pillW / 2, (x1 + x2) / 2);
+        renderCablePill({
+          svg_path: extPath,
+          label: labelText,
+          color: '#06b6d4',
+          fixed_x: pillX,
+          fixed_y: y1
+        });
       }
 
       // 1.2 Render Simulated Merge to Primary Trunk ONLY IF explicitly toggled by user
@@ -1548,6 +1569,23 @@
       return null;
     }
 
+    // Check if a pill at (px, py) with width pw collides with any node card
+    function findCollidingNodeCard(px, py, pw, ph = 26) {
+      if (!state.dagData || !state.dagData.nodes) return null;
+      const halfW = pw / 2 + 10;
+      const halfH = ph / 2 + 6;
+      for (const n of state.dagData.nodes) {
+        const nx1 = n.x;
+        const nx2 = n.x + (n.width || 300);
+        const ny1 = n.y;
+        const ny2 = n.y + (n.height || 88);
+        if (px + halfW >= nx1 && px - halfW <= nx2 && py + halfH >= ny1 && py - halfH <= ny2) {
+          return n;
+        }
+      }
+      return null;
+    }
+
     function renderCablePill(edge, isSimulated = false) {
       let points = [];
       const pillWidth = Math.max((edge.label || '').length * 7.2 + 20, 52);
@@ -1555,7 +1593,9 @@
       const matchC = edge.svg_path ? edge.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+C\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+)/) : null;
       const matchL = edge.svg_path ? edge.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+L\s+([-\d.]+)\s+([-\d.]+)/) : null;
 
-      if (matchC) {
+      if (edge.fixed_x !== undefined && edge.fixed_y !== undefined) {
+        points.push({ x: edge.fixed_x, y: edge.fixed_y });
+      } else if (matchC) {
         const x1 = parseFloat(matchC[1]), y1 = parseFloat(matchC[2]);
         const cx1 = parseFloat(matchC[3]), cy1 = parseFloat(matchC[4]);
         const cx2 = parseFloat(matchC[5]), cy2 = parseFloat(matchC[6]);
@@ -1646,6 +1686,16 @@
         const sanityWire = findCollidingHorizontalWire(mid.x, mid.y, pillWidth, edge);
         if (sanityWire) {
           mid.y += (mid.y <= sanityWire.y) ? -CLEARANCE : CLEARANCE;
+        }
+
+        // Final sanity clearance check against all node cards to ensure no card covers this pill
+        const hitNode = findCollidingNodeCard(mid.x, mid.y, pillWidth, 24);
+        if (hitNode) {
+          if (mid.x >= hitNode.x + hitNode.width / 2) {
+            mid.x = Math.max(mid.x, hitNode.x + hitNode.width + pillWidth / 2 + 28);
+          } else {
+            mid.x = Math.min(mid.x, hitNode.x - pillWidth / 2 - 28);
+          }
         }
 
         const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
