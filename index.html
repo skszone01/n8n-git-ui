@@ -658,13 +658,14 @@
     .side-drawer {
       position: fixed;
       top: 56px;
-      right: -520px;
-      width: 500px;
+      right: -860px;
+      width: 520px;
+      max-width: 92vw;
       bottom: 0;
       background: var(--surface-drawer);
       border-left: 1px solid var(--border-subtle);
       box-shadow: -12px 0 40px rgba(0, 0, 0, 0.65);
-      transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s ease;
       z-index: 150;
       display: flex;
       flex-direction: column;
@@ -673,6 +674,10 @@
 
     .side-drawer.open {
       right: 0;
+    }
+
+    .side-drawer.expanded {
+      width: 820px;
     }
 
     .drawer-header {
@@ -846,27 +851,42 @@
       background: var(--surface-code);
       border: 1px solid var(--border-subtle);
       border-radius: 8px;
-      padding: 14px;
+      padding: 12px 14px;
       font-family: 'JetBrains Mono', Consolas, 'Fira Code', monospace;
-      font-size: 12.5px;
+      font-size: 12px;
       color: #cbd5e1;
-      height: 335px;
+      height: 350px;
       min-height: 280px;
       flex-shrink: 0;
-      overflow: auto;
+      overflow-x: auto;
+      overflow-y: auto;
       line-height: 1.6;
-      white-space: pre;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
-    .code-diff-box.wrap-lines {
-      white-space: pre-wrap;
-      word-break: break-all;
+    .code-diff-box.no-wrap {
+      white-space: pre;
+      word-break: normal;
+      overflow-wrap: normal;
     }
 
     .diff-line {
       display: block;
-      padding: 1px 8px;
+      padding: 2px 8px;
       border-radius: 2px;
+      min-width: 100%;
+      width: max-content;
+      box-sizing: border-box;
+    }
+
+    .code-diff-box:not(.no-wrap) .diff-line {
+      width: 100%;
+      min-width: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
     .diff-file-header {
@@ -1011,6 +1031,7 @@
         <div id="drawer-branch-tags" style="display:flex; gap:4px; margin-top:4px;"></div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
+        <button class="copy-btn" id="drawer-expand-btn" title="Toggle wide drawer (Expand/Contract)">Wide: Off</button>
         <button class="drawer-close" id="drawer-close-btn" title="Close Drawer">✕</button>
       </div>
     </div>
@@ -1038,7 +1059,7 @@
       <div style="display:flex; align-items:center; justify-content:space-between; margin-top:8px;">
         <div class="diff-section-title">Unified Diff</div>
         <div style="display:flex; gap:6px;">
-          <button class="copy-btn" id="diff-wrap-btn" title="Toggle line wrap">Wrap: Off</button>
+          <button class="copy-btn" id="diff-wrap-btn" title="Toggle line wrap">Wrap: On</button>
         </div>
       </div>
       <div class="code-diff-box" id="drawer-diff-output">Loading diff...</div>
@@ -1757,16 +1778,21 @@
             const headers = Array.from(diffOutput.querySelectorAll('.diff-file-header'));
             const matched = headers.find(el => el.textContent.includes(cleanPath) || el.textContent.includes(f.path));
             if (matched) {
-              matched.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              const topPos = matched.offsetTop - diffOutput.offsetTop;
+              diffOutput.scrollTo({ top: Math.max(0, topPos - 12), left: 0, behavior: 'smooth' });
             }
           };
           filesList.appendChild(item);
         });
         diffOutput.innerHTML = formatUnifiedDiff(diffEntry.full_output);
+        diffOutput.scrollTop = 0;
+        diffOutput.scrollLeft = 0;
       } else {
         fileCountEl.textContent = '0 files';
         filesList.innerHTML = '<span style="font-size:12px; color:#64748b; padding:8px;">No file changes recorded for this commit.</span>';
         diffOutput.innerHTML = '<div class="diff-line diff-meta" style="padding:16px;">Commit details only (no diff content).</div>';
+        diffOutput.scrollTop = 0;
+        diffOutput.scrollLeft = 0;
       }
     }
 
@@ -1808,10 +1834,23 @@
     const diffWrapBtn = document.getElementById('diff-wrap-btn');
     diffWrapBtn.onclick = () => {
       const diffOutput = document.getElementById('drawer-diff-output');
-      diffOutput.classList.toggle('wrap-lines');
-      const isWrapped = diffOutput.classList.contains('wrap-lines');
-      diffWrapBtn.textContent = isWrapped ? 'Wrap: On' : 'Wrap: Off';
+      diffOutput.classList.toggle('no-wrap');
+      const isNoWrap = diffOutput.classList.contains('no-wrap');
+      diffWrapBtn.textContent = isNoWrap ? 'Wrap: Off' : 'Wrap: On';
+      if (!isNoWrap) {
+        diffOutput.scrollLeft = 0;
+      }
     };
+
+    // Toggle Wide Drawer
+    const drawerExpandBtn = document.getElementById('drawer-expand-btn');
+    if (drawerExpandBtn) {
+      drawerExpandBtn.onclick = () => {
+        sideDrawer.classList.toggle('expanded');
+        const isExp = sideDrawer.classList.contains('expanded');
+        drawerExpandBtn.textContent = isExp ? 'Wide: On' : 'Wide: Off';
+      };
+    }
 
     function fallbackCopy(text) {
       const input = document.createElement('textarea');
