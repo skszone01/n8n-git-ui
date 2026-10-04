@@ -10,3 +10,6 @@ ehthumbs.db
 
 # Logs
 *.log
+
+# Local data backups
+*.local*.js

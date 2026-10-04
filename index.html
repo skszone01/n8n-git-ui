@@ -1405,8 +1405,65 @@
       });
     }
 
+    // Helper to evaluate cubic bezier point at t
+    function getBezierPoint(t, x1, y1, cx1, cy1, cx2, cy2, x2, y2) {
+      const u = 1 - t;
+      const tt = t * t;
+      const uu = u * u;
+      const uuu = uu * u;
+      const ttt = tt * t;
+      return {
+        x: uuu * x1 + 3 * uu * t * cx1 + 3 * u * tt * cx2 + ttt * x2,
+        y: uuu * y1 + 3 * uu * t * cy1 + 3 * u * tt * cy2 + ttt * y2
+      };
+    }
+
+    // Check if a pill at (px, py) with width pw collides with any horizontal wire from another branch
+    function findCollidingHorizontalWire(px, py, pw, currentEdge) {
+      if (!state.dagData || !state.dagData.edges) return null;
+      const halfW = pw / 2 + 8;
+
+      for (const e of state.dagData.edges) {
+        if (e === currentEdge) continue;
+        const mC = e.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+C\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+)/);
+        const mL = e.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+L\s+([-\d.]+)\s+([-\d.]+)/);
+        let x1, y1, x2, y2;
+        if (mC) {
+          x1 = parseFloat(mC[1]); y1 = parseFloat(mC[2]);
+          x2 = parseFloat(mC[7]); y2 = parseFloat(mC[8]);
+        } else if (mL) {
+          x1 = parseFloat(mL[1]); y1 = parseFloat(mL[2]);
+          x2 = parseFloat(mL[3]); y2 = parseFloat(mL[4]);
+        }
+        if (x1 !== undefined && Math.abs(y1 - y2) < 4) {
+          const minX = Math.min(x1, x2);
+          const maxX = Math.max(x1, x2);
+          if (px + halfW >= minX && px - halfW <= maxX) {
+            if (Math.abs(py - y1) < 18) {
+              return { y: y1, minX, maxX };
+            }
+          }
+        }
+      }
+
+      // Also check Master Center Track if present
+      const masterY = state.dagData.master_y;
+      if (masterY !== undefined && Math.abs(py - masterY) < 18) {
+        if (state.dagData.nodes && state.dagData.nodes.length) {
+          const minX = Math.min(...state.dagData.nodes.map(n => n.x));
+          const maxX = Math.max(...state.dagData.nodes.map(n => n.x + (n.width || 300)));
+          if (px + halfW >= minX && px - halfW <= maxX) {
+            return { y: masterY, minX, maxX };
+          }
+        }
+      }
+
+      return null;
+    }
+
     function renderCablePill(edge, isSimulated = false) {
       let points = [];
+      const pillWidth = edge.label.length * 6.8 + 16;
       const matchC = edge.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+C\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+),\s+([-\d.]+)\s+([-\d.]+)/);
       const matchL = edge.svg_path.match(/M\s+([-\d.]+)\s+([-\d.]+)\s+L\s+([-\d.]+)\s+([-\d.]+)/);
 
@@ -1415,20 +1472,74 @@
         const cx1 = parseFloat(matchC[3]), cy1 = parseFloat(matchC[4]);
         const cx2 = parseFloat(matchC[5]), cy2 = parseFloat(matchC[6]);
         const x2 = parseFloat(matchC[7]), y2 = parseFloat(matchC[8]);
-        points.push({
-          x: (x1 + 3 * cx1 + 3 * cx2 + x2) / 8,
-          y: (y1 + 3 * cy1 + 3 * cy2 + y2) / 8
-        });
+
+        // Default: exact midpoint at t = 0.5
+        let mid = getBezierPoint(0.5, x1, y1, cx1, cy1, cx2, cy2, x2, y2);
+
+        // If edge transitions vertically between lanes, prevent overlapping intermediate branch lines
+        if (Math.abs(y2 - y1) > 10) {
+          const collidingWire = findCollidingHorizontalWire(mid.x, mid.y, pillWidth, edge);
+          if (collidingWire) {
+            // Target shift: 28px clearance from colliding wire
+            const shiftOffset = 28;
+            const targetUpY = mid.y - shiftOffset;
+            const targetDownY = mid.y + shiftOffset;
+
+            // Preferred direction:
+            // If curve goes downward (y2 > y1), prefer shifting UP towards branch origin
+            // If curve goes upward (y2 < y1), prefer shifting DOWN towards branch origin
+            const preferUp = (y2 >= y1);
+            let chosenTargetY = preferUp ? targetUpY : targetDownY;
+
+            // Check if preferred direction collides with another wire; if so, flip
+            if (findCollidingHorizontalWire(mid.x, chosenTargetY, pillWidth, edge)) {
+              chosenTargetY = preferUp ? targetDownY : targetUpY;
+            }
+
+            // Find t along curve closest to chosenTargetY so pill stays centered on curve
+            let bestT = 0.5;
+            let minDiff = Infinity;
+            for (let step = 20; step <= 80; step++) {
+              const tCand = step / 100;
+              const pt = getBezierPoint(tCand, x1, y1, cx1, cy1, cx2, cy2, x2, y2);
+              const diff = Math.abs(pt.y - chosenTargetY);
+              if (diff < minDiff) {
+                minDiff = diff;
+                bestT = tCand;
+              }
+            }
+
+            const candidatePt = getBezierPoint(bestT, x1, y1, cx1, cy1, cx2, cy2, x2, y2);
+            // Guarantee minimum vertical clearance
+            if (Math.abs(candidatePt.y - collidingWire.y) < 22) {
+              candidatePt.y = (chosenTargetY < collidingWire.y) ? (collidingWire.y - 26) : (collidingWire.y + 26);
+            }
+            mid = candidatePt;
+          }
+        }
+
+        points.push(mid);
       } else if (matchL) {
         const x1 = parseFloat(matchL[1]), y1 = parseFloat(matchL[2]);
         const x2 = parseFloat(matchL[3]), y2 = parseFloat(matchL[4]);
         const dist = Math.abs(x2 - x1);
+        let rawPoints = [];
         if (dist > 1800) {
-          points.push({ x: x1 + dist * 0.28, y: (y1 + y2) / 2 });
-          points.push({ x: x1 + dist * 0.65, y: (y1 + y2) / 2 });
+          rawPoints.push({ x: x1 + dist * 0.28, y: (y1 + y2) / 2 });
+          rawPoints.push({ x: x1 + dist * 0.65, y: (y1 + y2) / 2 });
         } else {
-          points.push({ x: (x1 + x2) / 2, y: (y1 + y2) / 2 });
+          rawPoints.push({ x: (x1 + x2) / 2, y: (y1 + y2) / 2 });
         }
+
+        rawPoints.forEach(pt => {
+          if (Math.abs(y1 - y2) > 10) {
+            const wire = findCollidingHorizontalWire(pt.x, pt.y, pillWidth, edge);
+            if (wire) {
+              pt.y += (y2 >= y1) ? -26 : 26;
+            }
+          }
+          points.push(pt);
+        });
       } else {
         const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         pathEl.setAttribute('d', edge.svg_path);
