@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Git DAG Visualizer - n8n Workflow Style</title>
+  <script src="commit_titles_th.js"></script>
   <style>
     :root {
       --bg-canvas: #121419;
@@ -77,7 +78,9 @@
     .brand-section {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
+      flex-shrink: 1;
+      min-width: 0;
     }
 
     .brand-logo {
@@ -89,6 +92,7 @@
       align-items: center;
       justify-content: center;
       box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+      flex-shrink: 0;
     }
 
     .brand-logo svg {
@@ -98,10 +102,11 @@
     }
 
     .brand-title {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       letter-spacing: -0.02em;
       color: var(--ink-primary);
+      white-space: nowrap;
     }
 
     .repo-badge {
@@ -162,6 +167,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      flex-shrink: 0;
     }
 
     .search-box {
@@ -231,6 +237,229 @@
 
     .btn-primary:hover {
       background: #0369a1;
+    }
+
+    /* Language Switcher in Top Navigation */
+    .lang-switch-group {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid rgba(6, 182, 212, 0.45);
+      border-radius: 6px;
+      padding: 2px 4px;
+      gap: 2px;
+      height: 32px;
+      flex-shrink: 0;
+    }
+
+    .lang-switch-btn {
+      background: transparent;
+      border: none;
+      color: var(--ink-muted);
+      font-family: var(--font-sans);
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      line-height: 1;
+    }
+
+    .lang-switch-btn:hover {
+      color: var(--ink-primary);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .lang-switch-btn.active {
+      background: rgba(6, 182, 212, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      box-shadow: 0 0 8px rgba(6, 182, 212, 0.25);
+    }
+
+    .lang-switch-sep {
+      color: rgba(255, 255, 255, 0.15);
+      font-size: 11px;
+      user-select: none;
+    }
+
+    @media (max-width: 1250px) {
+      .zero-server-chip { display: none; }
+      .repo-badge { display: none; }
+      .search-box { width: 140px; }
+    }
+    @media (max-width: 950px) {
+      #btn-merge-text { display: none; }
+      #btn-refresh-text { display: none; }
+      .brand-title { font-size: 12px; }
+      .search-box { width: 110px; }
+    }
+
+    /* Bottom-Right Version Checker Notification */
+    .git-version-hud {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      width: 340px;
+      max-width: calc(100vw - 32px);
+      background: linear-gradient(145deg, rgba(26, 31, 41, 0.96), rgba(18, 22, 29, 0.98));
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 
+        0 12px 30px rgba(0, 0, 0, 0.6),
+        0 0 16px rgba(6, 182, 212, 0.2);
+      backdrop-filter: blur(12px);
+      font-family: var(--font-sans);
+      animation: hudSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transition: opacity 0.25s, transform 0.25s;
+    }
+
+    .git-version-hud.hidden {
+      display: none !important;
+    }
+
+    .git-version-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .git-version-badge-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .git-version-pulse {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse 1.8s infinite ease-in-out;
+    }
+
+    .git-version-badge {
+      background: rgba(249, 115, 22, 0.18);
+      color: #fb923c;
+      border: 1px solid rgba(249, 115, 22, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .git-version-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: #f8fafc;
+      font-family: var(--font-mono);
+      background: rgba(255, 255, 255, 0.08);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .git-version-close {
+      background: transparent;
+      border: none;
+      color: var(--ink-muted);
+      cursor: pointer;
+      font-size: 14px;
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+
+    .git-version-close:hover {
+      color: #f87171;
+      background: rgba(248, 113, 113, 0.15);
+    }
+
+    .git-version-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .git-version-desc {
+      font-size: 11.5px;
+      color: var(--ink-secondary);
+      line-height: 1.45;
+      margin-bottom: 10px;
+    }
+
+    .git-version-diff {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--ink-muted);
+      margin-bottom: 10px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .git-version-diff .highlight {
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    .git-version-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .git-version-btn {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: all 0.15s;
+      border: none;
+    }
+
+    .git-version-btn.primary {
+      background: #0284c7;
+      color: #ffffff;
+      border: 1px solid #38bdf8;
+    }
+
+    .git-version-btn.primary:hover {
+      background: #0369a1;
+    }
+
+    .git-version-btn.ghost {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--ink-secondary);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .git-version-btn.ghost:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+    }
+
+    @keyframes hudSlideUp {
+      from { opacity: 0; transform: translateY(20px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
     /* Canvas Area */
@@ -1042,15 +1271,18 @@
         <input type="text" id="search-input" placeholder="Search commit, branch, author...">
       </div>
 
-      <button class="btn" id="btn-simulate-merge" title="Show simulated merge curve into Primary Trunk">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 12V4H7v8H2l10 10 10-10h-5z"/></svg>
-        <span id="btn-merge-text">Merge to Trunk</span>
-      </button>
 
       <button class="btn btn-primary" id="btn-refresh" title="Reload Page / Refresh Git Data (F5)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-        Refresh (F5)
+        <span id="btn-refresh-text">Refresh (F5)</span>
       </button>
+
+      <!-- Language Selector Group (ENG / TH) -->
+      <div class="lang-switch-group" id="lang-switch-group" title="Language / เปลี่ยนภาษา">
+        <button type="button" class="lang-switch-btn active" id="btn-lang-en" data-lang="en">ENG</button>
+        <span class="lang-switch-sep">|</span>
+        <button type="button" class="lang-switch-btn" id="btn-lang-th" data-lang="th">TH</button>
+      </div>
     </div>
   </header>
 
@@ -1136,6 +1368,31 @@
     </div>
   </aside>
 
+  <!-- Bottom-Right Version Checker Notification (Hidden by default; shown only if newer version found on GitHub) -->
+  <div class="git-version-hud hidden" id="git-version-hud">
+    <div class="git-version-header">
+      <div class="git-version-badge-group">
+        <div class="git-version-pulse"></div>
+        <span class="git-version-badge" id="hud-ver-badge">NEW UPDATE</span>
+        <span class="git-version-tag">v1.0.5</span>
+      </div>
+      <button type="button" class="git-version-close" id="hud-ver-close" title="Close / ปิด">✕</button>
+    </div>
+    <div class="git-version-title" id="hud-ver-title">n8n Git UI v1.0.5 Available!</div>
+    <div class="git-version-desc" id="hud-ver-desc">
+      Added multi-language switcher (ENG/TH), 24-hour time format, DAG graph rendering optimizations, and Thai commit display.
+    </div>
+    <div class="git-version-diff">
+      <span id="hud-cur-label">Current: <strong style="color:#94a3b8;">v1.0.0</strong></span>
+      <span>→</span>
+      <span id="hud-latest-label">Latest: <strong class="highlight">v1.0.5</strong></span>
+    </div>
+    <div class="git-version-actions">
+      <a href="https://github.com/skszone01/n8n-git-ui" target="_blank" class="git-version-btn primary" id="hud-btn-download">Update n8n UI</a>
+      <button type="button" class="git-version-btn ghost" id="hud-btn-dismiss">Dismiss</button>
+    </div>
+  </div>
+
   <!-- Frontend Logic Application -->
   <script>
     // State management
@@ -1164,6 +1421,266 @@
     const searchInput = document.getElementById('search-input');
     const btnRefresh = document.getElementById('btn-refresh');
     const btnSimulateMerge = document.getElementById('btn-simulate-merge');
+
+    // =========================================================================
+    // Multi-Language (ENG / TH) & Version Checker Integration
+    // =========================================================================
+    const CURRENT_APP_VERSION = "v1.0.5";
+    let latestDetectedTag = null;
+
+    const I18N_DICT = {
+      en: {
+        brand_title: "Git Workflow Graph",
+        zero_server: "Zero-Server Mode",
+        data_live: "Data: Live Local",
+        data_loading: "Data: Loading...",
+        search_placeholder: "Search commit, branch, author...",
+        btn_merge_master: "Merge to MASTER",
+        btn_merge_trunk: "Merge to Trunk",
+        btn_merge_cancel: "Cancel Merge Preview",
+        btn_refresh: "Refresh (F5)",
+        hud_zoom_in: "Zoom In (+)",
+        hud_zoom_out: "Zoom Out (-)",
+        hud_fit: "Fit to View (⤢)",
+        hud_reset: "Reset Zoom (1:1)",
+        drawer_author: "Author:",
+        drawer_date: "Date:",
+        drawer_parents: "Parents:",
+        drawer_files: "Modified Files",
+        drawer_diff: "Unified Diff",
+        drawer_copy_sha: "Copy SHA",
+        drawer_copied: "Copied!",
+        drawer_expand_on: "Wide: On",
+        drawer_expand_off: "Wide: Off",
+        drawer_close: "Close Drawer",
+        version_new: "NEW UPDATE",
+        version_title: "n8n Git UI v1.0.5 Available!",
+        version_desc: "Added multi-language switcher (ENG/TH), 24-hour time format, DAG graph rendering optimizations, and Thai commit display.",
+        version_cur: "Current",
+        version_latest: "Latest",
+        version_update_btn: "Update n8n UI",
+        version_github_btn: "GitHub Release",
+        version_dismiss_btn: "Dismiss"
+      },
+      th: {
+        brand_title: "Git Workflow Graph",
+        zero_server: "โหมด Zero-Server",
+        data_live: "ข้อมูล: โลคอลสด",
+        data_loading: "ข้อมูล: กำลังโหลด...",
+        search_placeholder: "ค้นหา commit, branch, ผู้เขียน...",
+        btn_merge_master: "จำลองรวมเข้า MASTER",
+        btn_merge_trunk: "จำลองรวมเข้า Trunk",
+        btn_merge_cancel: "ยกเลิกดูตัวอย่าง Merge",
+        btn_refresh: "รีเฟรช (F5)",
+        hud_zoom_in: "ซูมเข้า (+)",
+        hud_zoom_out: "ซูมออก (-)",
+        hud_fit: "พอดีหน้าจอ (⤢)",
+        hud_reset: "รีเซ็ตซูม (1:1)",
+        drawer_author: "ผู้เขียน:",
+        drawer_date: "วันที่:",
+        drawer_parents: "คอมมิตก่อนหน้า:",
+        drawer_files: "ไฟล์ที่ถูกแก้ไข",
+        drawer_diff: "รายละเอียดความต่าง (Unified Diff)",
+        drawer_copy_sha: "คัดลอก SHA",
+        drawer_copied: "คัดลอกแล้ว!",
+        drawer_expand_on: "ขยายกว้าง: เปิด",
+        drawer_expand_off: "ขยายกว้าง: ปิด",
+        drawer_close: "ปิดแถบข้าง",
+        version_new: "อัปเดตใหม่",
+        version_title: "มีอัปเดต n8n Git UI v1.0.5!",
+        version_desc: "เพิ่มระบบสลับภาษา (ENG/TH), แสดงเวลาแบบ 24 ชม., ปรับปรุงกราฟ DAG และแสดงผลคอมมิตภาษาไทย",
+        version_cur: "ปัจจุบัน",
+        version_latest: "ล่าสุด",
+        version_update_btn: "อัปเดต n8n UI",
+        version_github_btn: "ดูบน GitHub",
+        version_dismiss_btn: "ปิดแจ้งเตือน"
+      }
+    };
+
+    let currentLang = localStorage.getItem("git_dag_lang") || "en";
+
+    function applyLanguage(lang) {
+      currentLang = lang;
+      document.documentElement.lang = lang;
+      const dict = I18N_DICT[lang] || I18N_DICT.en;
+
+      // Update buttons active state
+      const btnEn = document.getElementById("btn-lang-en");
+      const btnTh = document.getElementById("btn-lang-th");
+      if (btnEn && btnTh) {
+        btnEn.classList.toggle("active", lang === "en");
+        btnTh.classList.toggle("active", lang === "th");
+      }
+
+      // Update Header Elements
+      const brandTitle = document.querySelector(".brand-title");
+      if (brandTitle) brandTitle.textContent = dict.brand_title;
+
+      const zeroChip = document.querySelector(".zero-server-chip");
+      if (zeroChip) zeroChip.textContent = dict.zero_server;
+
+      const searchInput = document.getElementById("search-input");
+      if (searchInput) searchInput.placeholder = dict.search_placeholder;
+
+      const btnMergeText = document.getElementById("btn-merge-text");
+      if (btnMergeText) {
+        if (state.showSimulatedMerge) {
+          btnMergeText.textContent = dict.btn_merge_cancel;
+        } else {
+          const primaryBranch = (state.dagData && state.dagData.primary_branch) ? state.dagData.primary_branch.toUpperCase() : "MASTER";
+          btnMergeText.textContent = lang === "th" ? `จำลองรวมเข้า ${primaryBranch}` : `Merge to ${primaryBranch}`;
+        }
+      }
+
+      const btnRefreshText = document.getElementById("btn-refresh-text");
+      if (btnRefreshText) btnRefreshText.textContent = dict.btn_refresh;
+
+      // Update Zoom Tooltips
+      const zoomIn = document.getElementById("hud-zoom-in");
+      if (zoomIn) zoomIn.title = dict.hud_zoom_in;
+      const zoomOut = document.getElementById("hud-zoom-out");
+      if (zoomOut) zoomOut.title = dict.hud_zoom_out;
+      const fitBtn = document.getElementById("hud-fit");
+      if (fitBtn) fitBtn.title = dict.hud_fit;
+      const resetBtn = document.getElementById("hud-reset");
+      if (resetBtn) resetBtn.title = dict.hud_reset;
+
+      // Update Drawer labels
+      const metaLabels = document.querySelectorAll(".drawer-meta-grid .meta-label");
+      if (metaLabels && metaLabels.length >= 3) {
+        metaLabels[0].textContent = dict.drawer_author;
+        metaLabels[1].textContent = dict.drawer_date;
+        metaLabels[2].textContent = dict.drawer_parents;
+      }
+      const diffTitles = document.querySelectorAll(".diff-section-title");
+      if (diffTitles && diffTitles.length >= 2) {
+        diffTitles[0].textContent = dict.drawer_files;
+        diffTitles[1].textContent = dict.drawer_diff;
+      }
+      const copyBtn = document.getElementById("drawer-copy-btn");
+      if (copyBtn && !copyBtn.textContent.includes("Copied") && !copyBtn.textContent.includes("คัดลอกแล้ว")) {
+        copyBtn.textContent = dict.drawer_copy_sha;
+      }
+
+      // Update Version HUD Card texts
+      const verBadge = document.getElementById("hud-ver-badge");
+      if (verBadge) verBadge.textContent = dict.version_new;
+      const verTitle = document.getElementById("hud-ver-title");
+      if (verTitle) verTitle.textContent = dict.version_title;
+      const verDesc = document.getElementById("hud-ver-desc");
+      if (verDesc) verDesc.textContent = dict.version_desc;
+      const verCur = document.getElementById("hud-cur-label");
+      if (verCur) verCur.innerHTML = `${dict.version_cur}: <strong style="color:#94a3b8;">${CURRENT_APP_VERSION}</strong>`;
+      const verLatest = document.getElementById("hud-latest-label");
+      if (verLatest) verLatest.innerHTML = `${dict.version_latest}: <strong class="highlight">${latestDetectedTag || CURRENT_APP_VERSION}</strong>`;
+      const verDl = document.getElementById("hud-btn-download");
+      if (verDl) {
+        verDl.textContent = dict.version_update_btn;
+        verDl.href = "https://github.com/skszone01/n8n-git-ui";
+      }
+      const verDismiss = document.getElementById("hud-btn-dismiss");
+      if (verDismiss) verDismiss.textContent = dict.version_dismiss_btn;
+
+      // Re-render Graph Cards with newly selected language (Titles & 24h Dates)
+      if (state.dagData && state.dagData.nodes && state.dagData.nodes.length > 0) {
+        renderGraph(state.dagData);
+        if (state.selectedNodeId) {
+          const selNode = state.dagData.nodes.find(n => n.id === state.selectedNodeId);
+          if (selNode) selectNode(selNode);
+        }
+      }
+    }
+
+    function setLanguage(lang) {
+      localStorage.setItem("git_dag_lang", lang);
+      applyLanguage(lang);
+    }
+
+    // Bind Language Buttons
+    const btnLangEn = document.getElementById("btn-lang-en");
+    const btnLangTh = document.getElementById("btn-lang-th");
+    if (btnLangEn) btnLangEn.addEventListener("click", () => setLanguage("en"));
+    if (btnLangTh) btnLangTh.addEventListener("click", () => setLanguage("th"));
+
+    // Version check dismiss handler
+    const btnDismissHud = document.getElementById("hud-btn-dismiss");
+    const btnCloseHud = document.getElementById("hud-ver-close");
+    const hudEl = document.getElementById("git-version-hud");
+
+    function dismissVersionHud() {
+      if (hudEl) {
+        hudEl.style.opacity = "0";
+        hudEl.style.transform = "translateY(20px)";
+        setTimeout(() => hudEl.classList.add("hidden"), 250);
+      }
+      localStorage.setItem("git_dag_version_dismissed", latestDetectedTag || CURRENT_APP_VERSION);
+    }
+
+    if (btnDismissHud) btnDismissHud.addEventListener("click", dismissVersionHud);
+    if (btnCloseHud) btnCloseHud.addEventListener("click", dismissVersionHud);
+
+    // Initial language application
+    applyLanguage(currentLang);
+
+    // Semantic version comparator (e.g. "v1.0.6" > "v1.0.5")
+    function isNewerVersion(latest, current) {
+      if (!latest || !current) return false;
+      const clean = v => v.replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
+      const l = clean(latest);
+      const c = clean(current);
+      for (let i = 0; i < Math.max(l.length, c.length); i++) {
+        const lv = l[i] || 0;
+        const cv = c[i] || 0;
+        if (lv > cv) return true;
+        if (lv < cv) return false;
+      }
+      return false;
+    }
+
+    // Dynamic GitHub version check (skszone01/n8n-git-ui)
+    // Only alerts the user when a release strictly newer than CURRENT_APP_VERSION exists on GitHub.
+    async function checkGitHubVersion() {
+      try {
+        const repo = 'skszone01/n8n-git-ui';
+        const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, { cache: 'no-cache' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.tag_name) {
+            const latestTag = data.tag_name;
+            latestDetectedTag = latestTag;
+
+            // Only show alert if GitHub has a strictly newer version
+            if (isNewerVersion(latestTag, CURRENT_APP_VERSION)) {
+              const dismissed = localStorage.getItem("git_dag_version_dismissed");
+              if (dismissed === latestTag) return;
+
+              const latestLabel = document.getElementById("hud-latest-label");
+              if (latestLabel) latestLabel.innerHTML = `${(I18N_DICT[currentLang] || I18N_DICT.en).version_latest}: <strong class="highlight">${latestTag}</strong>`;
+              const curLabel = document.getElementById("hud-cur-label");
+              if (curLabel) curLabel.innerHTML = `${(I18N_DICT[currentLang] || I18N_DICT.en).version_cur}: <strong style="color:#94a3b8;">${CURRENT_APP_VERSION}</strong>`;
+              const verTag = document.querySelector(".git-version-tag");
+              if (verTag) verTag.textContent = latestTag;
+              const verTitle = document.getElementById("hud-ver-title");
+              if (verTitle) verTitle.textContent = currentLang === "th" ? `มีอัปเดต n8n Git UI ${latestTag}!` : `n8n Git UI ${latestTag} Available!`;
+              if (data.body) {
+                const verDesc = document.getElementById("hud-ver-desc");
+                if (verDesc) verDesc.textContent = data.body.substring(0, 160) + (data.body.length > 160 ? "..." : "");
+              }
+
+              // Reveal notification card
+              if (hudEl) {
+                hudEl.classList.remove("hidden");
+                hudEl.style.opacity = "1";
+                hudEl.style.transform = "translateY(0)";
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("GitHub version check:", e);
+      }
+    }
+    checkGitHubVersion();
 
     // Update viewport transform with crisp integer-pixel translation
     function updateTransform() {
@@ -1501,14 +2018,16 @@
       const masterTip = data.nodes.find(n => n.branches && (n.branches.includes(primary) || n.branches.includes('master') || n.branches.includes('main')));
       
       const btnMergeText = document.getElementById('btn-merge-text');
-      if (btnMergeText) btnMergeText.textContent = `Merge to ${primary.toUpperCase()}`;
+      if (btnMergeText) {
+        btnMergeText.textContent = (currentLang === 'th' ? `จำลองรวมเข้า ${primary.toUpperCase()}` : `Merge to ${primary.toUpperCase()}`);
+      }
 
       if (masterTip) {
         const x1 = masterTip.x + masterTip.width;
         const y1 = masterTip.y + masterTip.height / 2;
         const allX = data.nodes.map(n => n.x + n.width);
         const maxNodeX = Math.max(...allX);
-        const labelText = `${primary.toUpperCase()} (MAIN TRUNK)`;
+        const labelText = currentLang === 'th' ? `${primary.toUpperCase()} (สายหลัก)` : `${primary.toUpperCase()} (MAIN TRUNK)`;
         const pillW = Math.max(labelText.length * 7.5 + 24, 150);
 
         // Ensure extension line always extends far enough to give pill plenty of breathing room
@@ -1574,7 +2093,8 @@
 
       // 2. Render Node Cards
       data.nodes.forEach(node => {
-        const title = node.title || node.subject || node.short_id || (node.id ? node.id.slice(0, 7) : 'commit');
+        const rawTitle = node.title || node.subject || node.short_id || (node.id ? node.id.slice(0, 7) : 'commit');
+        const displayTitle = getTranslatedTitle(node, currentLang);
         const shortId = node.short_id || node.short_hash || (node.id ? node.id.slice(0, 7) : '');
         const author = node.author_name || node.author || (node.author_full ? node.author_full.split('<')[0].trim() : 'Unknown');
         const isWip = Boolean(node.is_wip || node.status === 'wip' || node.id === 'working-directory-wip' || node.id === 'active-wip');
@@ -1585,7 +2105,7 @@
         if (query) {
           const filePaths = (state.dagData.diffs && state.dagData.diffs[node.id] && state.dagData.diffs[node.id].files)
             ? state.dagData.diffs[node.id].files.map(f => f.path).join(' ') : '';
-          const content = `${title} ${shortId} ${author} ${(node.branches || []).join(' ')} ${filePaths}`.toLowerCase();
+          const content = `${rawTitle} ${displayTitle} ${shortId} ${author} ${(node.branches || []).join(' ')} ${filePaths}`.toLowerCase();
           isMatch = content.includes(query);
         }
 
@@ -1626,14 +2146,16 @@
 
         const titleEl = document.createElement('div');
         titleEl.className = 'node-title';
-        titleEl.textContent = title;
-        titleEl.title = title;
+        titleEl.textContent = displayTitle;
+        titleEl.title = rawTitle;
 
         const subEl = document.createElement('div');
         subEl.className = 'node-subtitle';
         if (isWip) {
-          subEl.innerHTML = `<span style="color:#fbbf24;font-weight:700;">● UNCOMMITTED</span> • <span>Working Tree</span>`;
-          subEl.title = `Local uncommitted changes (${title})`;
+          subEl.innerHTML = currentLang === 'th'
+            ? `<span style="color:#fbbf24;font-weight:700;">● ยังไม่คอมมิต</span> • <span>ไฟล์ในเครื่อง</span>`
+            : `<span style="color:#fbbf24;font-weight:700;">● UNCOMMITTED</span> • <span>Working Tree</span>`;
+          subEl.title = currentLang === 'th' ? `การเปลี่ยนแปลงในเครื่องที่ยังไม่คอมมิต (${displayTitle})` : `Local uncommitted changes (${rawTitle})`;
         } else {
           subEl.innerHTML = '';
           const idSpan = document.createElement('span');
@@ -1644,7 +2166,9 @@
           subEl.appendChild(idSpan);
           subEl.appendChild(dotText);
           subEl.appendChild(dateSpan);
-          subEl.title = `Commit #${shortId} by ${author} (${node.date || ''})`;
+          subEl.title = currentLang === 'th'
+            ? `คอมมิต #${shortId} โดย ${author} (${formatDate(node.date)})`
+            : `Commit #${shortId} by ${author} (${node.date || ''})`;
         }
 
         const branchBox = document.createElement('div');
@@ -2019,13 +2543,154 @@
       return `<svg viewBox="0 0 24 24" fill="#f97316"><path d="M19 13v-2c-1.54.02-3.09-.75-4.07-1.83l-1.29-1.43C13.1 7.14 12.21 6.5 11.19 6.22A3.5 3.5 0 1 0 7 9.87V15a3.5 3.5 0 1 0 2 0v-4.13c.48.16.97.43 1.41.83l1.29 1.43c1.37 1.52 3.32 2.45 5.3 2.45v2.41l3.5-3.5L19 13z"/></svg>`;
     }
 
+    function translateScope(scopeStr) {
+      if (!scopeStr) return '';
+      const s = scopeStr.replace(/^\(|\)$/g, '').trim();
+      const map = {
+        'mobile': 'มือถือ',
+        'effects': 'เอฟเฟกต์',
+        'effect': 'เอฟเฟกต์',
+        'eff': 'เอฟเฟกต์',
+        'shadow': 'เงา',
+        'render': 'เรนเดอร์',
+        'rhi': 'ระบบกราฟิก RHI',
+        'mesh': 'เมช 3D',
+        'editor': 'ตัวแก้ไข',
+        'editor,mesh': 'ตัวแก้ไข,เมช',
+        'engine': 'เอนจิน',
+        'perf': 'ประสิทธิภาพ',
+        'i18n': 'แปลภาษา',
+        'localization': 'แปลภาษา',
+        'ui': 'UI',
+        'logic,ui': 'ตรรกะ,UI',
+        'ui,logic': 'UI,ตรรกะ',
+        'logic': 'ตรรกะ',
+        'graphics': 'กราฟิก',
+        'graphics,ui': 'กราฟิก,UI',
+        'graphics,effect': 'กราฟิก,เอฟเฟกต์',
+        'd3d12': 'DirectX 12',
+        'bgfx': 'bgfx',
+        'RanRHI_Bgfx': 'RanRHI_Bgfx',
+        'anim': 'แอนิเมชัน',
+        'assets': 'แอสเซท',
+        'cutover': 'ตัดถ่ายระบบ',
+        'skeleton': 'โครงกระดูก',
+        'skinning': 'สกินนิ่ง',
+        'gltf': 'glTF',
+        'glb': 'GLB',
+        'trace': 'ริบบอนเทรล',
+        'warp': 'วาร์ป',
+        'crowd': 'ฝูงชน/มอนสเตอร์',
+        'server': 'เซิร์ฟเวอร์',
+        'chat': 'แชท',
+        'crossplay': 'ครอสเพลย์',
+        'client': 'ไคลเอนต์',
+        'scene': 'ฉาก',
+        'crash': 'แครช/หลุด',
+        'milestone-3': 'ไมล์สโตน-3',
+        'milestone-4': 'ไมล์สโตน-4',
+        'plan-92': 'แผน-92',
+        'plan-93': 'แผน-93',
+        'plan-99': 'แผน-99'
+      };
+      return `(${map[s] || s})`;
+    }
+
+    function getTranslatedTitle(nodeOrTitle, lang) {
+      if (!nodeOrTitle) return '';
+      const isObj = typeof nodeOrTitle === 'object' && nodeOrTitle !== null;
+      const id = isObj ? (nodeOrTitle.id || '') : '';
+      const shortId = isObj ? (nodeOrTitle.short_id || id.slice(0, 7)) : '';
+      const origTitle = isObj ? (nodeOrTitle.title || nodeOrTitle.subject || '') : String(nodeOrTitle);
+
+      if (lang !== 'th') {
+        return origTitle || shortId || id;
+      }
+
+      if (isObj && nodeOrTitle.title_th) return nodeOrTitle.title_th;
+
+      const dict = window.COMMIT_TITLES_TH || {};
+      if (id && dict[id]) return dict[id];
+      if (shortId && dict[shortId]) return dict[shortId];
+      if (origTitle && dict[origTitle]) return dict[origTitle];
+
+      // Dynamic fallback rule-based translation
+      let th = origTitle;
+      th = th.replace(/^feat(\([^)]+\))?:\s*/i, (m, g) => `ฟีเจอร์${translateScope(g)}: `);
+      th = th.replace(/^fix(\([^)]+\))?:\s*/i, (m, g) => `แก้ไข${translateScope(g)}: `);
+      th = th.replace(/^docs(\([^)]+\))?:\s*/i, (m, g) => `เอกสาร${translateScope(g)}: `);
+      th = th.replace(/^merge:\s*/i, 'ผสานสาย: ');
+      th = th.replace(/^Merge branch\s+'([^']+)'\s+into\s+([^\s]+)/i, 'ผสานสายกิ่ง \'$1\' เข้าสู่ $2');
+      th = th.replace(/^chore(\([^)]+\))?:\s*/i, (m, g) => `ดูแลระบบ${translateScope(g)}: `);
+      th = th.replace(/^refactor(\([^)]+\))?:\s*/i, (m, g) => `ปรับปรุง${translateScope(g)}: `);
+      th = th.replace(/^revert(\([^)]+\))?:\s*/i, (m, g) => `ย้อนกลับ${translateScope(g)}: `);
+      th = th.replace(/^perf(\([^)]+\))?:\s*/i, (m, g) => `ประสิทธิภาพ${translateScope(g)}: `);
+
+      th = th.replace(/widen aim ground ray for steep slopes and NaN-safe ribbon half-width/gi, 'ขยายลำแสงเป้าเล็งบนพื้นสำหรับทางลาดชันและป้องกันค่า NaN ในความกว้างริบบอน');
+      th = th.replace(/optimize aim indicator ground ribbon rendering/gi, 'ปรับปรุงประสิทธิภาพการเรนเดอร์ริบบอนเป้าเล็งบนพื้น');
+      th = th.replace(/implement Plan 118 fix for uninitialized fulllife in charblur union property/gi, 'นำแผน 118 เข้าใช้งาน แก้บั๊ก fulllife ที่ไม่ได้กำหนดค่าใน charblur');
+      th = th.replace(/implement Plan 117 generic tail effect freeze fix and telemetry/gi, 'นำแผน 117 เข้าใช้งาน แก้บั๊กเอฟเฟกต์หางค้างทั่วไปและเพิ่มเทเลเมทรี');
+      th = th.replace(/set 0\.45s as default blur lifetime and reorder blursys trimming before stuck check/gi, 'ตั้งค่าเวลาเบลอ 0.45 วิ เป็นค่าเริ่มต้นและจัดลำดับ blursys ใหม่ก่อนตรวจการค้าง');
+      th = th.replace(/integrate Plans 104-109, 111-112, 114, and Plan 107 full asset cutover into master/gi, 'รวมแผน 104-109, 111-112, 114 และการตัดถ่ายแอสเซทเต็มรูปแบบแผน 107 เข้าสู่ master');
+      th = th.replace(/add ran_legacy_archive tool for safe quarantine and rollback/gi, 'เพิ่มเครื่องมือ ran_legacy_archive สำหรับกักกันและย้อนกลับอย่างปลอดภัย');
+
+      return th;
+    }
+
     function formatDate(isoStr) {
       if (!isoStr) return '';
       try {
         const d = new Date(isoStr);
-        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        if (isNaN(d.getTime())) return isoStr.substring(0, 10);
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        if (currentLang === 'th') {
+          const monthsTh = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+          const day = d.getDate();
+          const month = monthsTh[d.getMonth()];
+          // 24-hour time format with Thai month, e.g. "3 ต.ค., 22:16 น."
+          return `${day} ${month}, ${hours}:${minutes} น.`;
+        } else {
+          const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const day = d.getDate();
+          const month = monthsEn[d.getMonth()];
+          let h = d.getHours();
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          h = h % 12;
+          h = h ? h : 12;
+          return `${month} ${day}, ${h}:${minutes} ${ampm}`;
+        }
       } catch(e) {
         return isoStr.substring(0, 10);
+      }
+    }
+
+    function formatFullDate(isoStr) {
+      if (!isoStr) return '';
+      try {
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return isoStr;
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const seconds = String(d.getSeconds()).padStart(2, '0');
+        if (currentLang === 'th') {
+          const monthsThFull = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+          const day = d.getDate();
+          const month = monthsThFull[d.getMonth()];
+          const year = d.getFullYear() + 543;
+          return `${day} ${month} ${year}, ${hours}:${minutes}:${seconds} น.`;
+        } else {
+          const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const day = d.getDate();
+          const month = monthsEn[d.getMonth()];
+          let h = d.getHours();
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          h = h % 12;
+          h = h ? h : 12;
+          return `${month} ${day}, ${d.getFullYear()}, ${h}:${minutes}:${seconds} ${ampm}`;
+        }
+      } catch(e) {
+        return isoStr;
       }
     }
 
@@ -2039,18 +2704,19 @@
 
       const isWip = Boolean(node.id === 'working-directory-wip' || node.id === 'active-wip' || node.is_wip || node.status === 'wip');
       const shortId = node.short_id || node.short_hash || (node.id ? node.id.slice(0, 7) : '');
-      const title = node.title || node.subject || shortId || (node.id ? node.id.slice(0, 7) : 'commit');
+      const rawTitle = node.title || node.subject || shortId || (node.id ? node.id.slice(0, 7) : 'commit');
+      const displayTitle = getTranslatedTitle(node, currentLang);
       const authorFull = node.author_full || (node.author_name ? `${node.author_name} <${node.author_email || ''}>` : (node.author || 'Unknown'));
 
       const hashEl = document.getElementById('drawer-hash-text');
-      hashEl.textContent = isWip ? 'WIP (Uncommitted)' : (shortId || node.id.substring(0, 12));
+      hashEl.textContent = isWip ? (currentLang === 'th' ? 'WIP (ยังไม่คอมมิต)' : 'WIP (Uncommitted)') : (shortId || node.id.substring(0, 12));
       hashEl.title = node.id;
-      document.getElementById('drawer-author').textContent = isWip ? 'Local Working Tree' : authorFull;
-      document.getElementById('drawer-date').textContent = isWip ? 'Current Local Changes' : (node.date || '');
-      document.getElementById('drawer-parents').textContent = (node.parents || []).map(p => p.substring(0, 7)).join(', ') || 'Root';
+      document.getElementById('drawer-author').textContent = isWip ? (currentLang === 'th' ? 'ไฟล์ในเครื่อง (Working Tree)' : 'Local Working Tree') : authorFull;
+      document.getElementById('drawer-date').textContent = isWip ? (currentLang === 'th' ? 'การเปลี่ยนแปลงล่าสุดในเครื่อง' : 'Current Local Changes') : formatFullDate(node.date);
+      document.getElementById('drawer-parents').textContent = (node.parents || []).map(p => p.substring(0, 7)).join(', ') || (currentLang === 'th' ? 'จุดเริ่มต้น (Root)' : 'Root');
       const msgEl = document.getElementById('drawer-message');
-      msgEl.textContent = title;
-      msgEl.title = title;
+      msgEl.textContent = displayTitle;
+      msgEl.title = rawTitle;
 
       const tagBox = document.getElementById('drawer-branch-tags');
       tagBox.innerHTML = '';
@@ -2217,13 +2883,15 @@
       loadDAGData();
     };
 
-    // Simulate Merge Toggle
-    btnSimulateMerge.onclick = () => {
-      state.showSimulatedMerge = !state.showSimulatedMerge;
-      btnSimulateMerge.style.background = state.showSimulatedMerge ? 'rgba(16, 185, 129, 0.25)' : '';
-      btnSimulateMerge.style.borderColor = state.showSimulatedMerge ? '#10b981' : '';
-      if (state.dagData) renderGraph(state.dagData);
-    };
+    // Simulate Merge Toggle (Optional)
+    if (btnSimulateMerge) {
+      btnSimulateMerge.onclick = () => {
+        state.showSimulatedMerge = !state.showSimulatedMerge;
+        btnSimulateMerge.style.background = state.showSimulatedMerge ? 'rgba(16, 185, 129, 0.25)' : '';
+        btnSimulateMerge.style.borderColor = state.showSimulatedMerge ? '#10b981' : '';
+        if (state.dagData) renderGraph(state.dagData);
+      };
+    }
 
     // Live Polling Gating:
     // Only poll git_data.js if URL contains ?live=1 or #live or if user toggles live mode.
@@ -2304,6 +2972,11 @@
       }
 
       const v = Date.now();
+      if (!window.COMMIT_TITLES_TH) {
+        injectScript('commit_titles_th.js?v=' + v, () => {
+          if (state.dagData && currentLang === 'th') renderGraph(state.dagData);
+        }, () => {});
+      }
       // First attempt: git_data.js
       injectScript('git_data.js?v=' + v, () => {
         if (window.GIT_DAG_DATA && window.GIT_DAG_DATA.nodes && window.GIT_DAG_DATA.nodes.length) {

@@ -1,0 +1,658 @@
+[
+  {
+    "id": "300483b67b1da3e90d75a25b16be8c92bfb4a60c",
+    "title": "feat: Baseline Milestone 2 (Clean MS2 state with multicore skeleton and nameplate amortization)"
+  },
+  {
+    "id": "0edeae98ae68f30b64be9e90640164ec67b2ced7",
+    "title": "docs: Update Plan 89 Milestone 3 specification to zero-regression bone reuse"
+  },
+  {
+    "id": "25edae75818cccecd5f7b6e03709de42bbb7205b",
+    "title": "feat(milestone-3): Eliminate redundant CPU bone recalculation in shadow pass & stabilize crow sorting using vLookatPt"
+  },
+  {
+    "id": "bd8173e264888a3cf645aa19c21b7cafdb8be42c",
+    "title": "fix(shadow): resolve 3 shadow issues (NPC piece flag, camera popping, night crowd)"
+  },
+  {
+    "id": "4518741b837bcc8221cfb72a415aee1ea967e5ac",
+    "title": "fix(shadow): restore Milestone 2 stability, fix mob crowd shadows and NPC Freyja camera popping"
+  },
+  {
+    "id": "ff09b1e5367d97abf57d360d8efb2349e81eee18",
+    "title": "fix(shadow): restore per-caster SetPointLight matrix in night mode so NPC quads render shadows"
+  },
+  {
+    "id": "a7c04cbd2cea98cc6055345d7997e5107ad51330",
+    "title": "fix(shadow): fix missing NPC shadows on camera rotation and mob shadow jitter"
+  },
+  {
+    "id": "7707c7f5e048df6bdcf4f5f8beb1129b40dc07c3",
+    "title": "fix(shadow): restore Milestone 2 shadow extents in RenderShadowMob to eliminate pop-in/pop-out and smoothly fade mob shadows"
+  },
+  {
+    "id": "c1cb701556c77acef6c88f9dfd2877194114e064",
+    "title": "fix(shadow): smooth distance fade and silhouette pool budget protection for mob shadows (Milestone 3 complete)"
+  },
+  {
+    "id": "cda2507c9d966824a9c03e0de6157bb9d1efc669",
+    "title": "feat(milestone-4): GPU saturation, parallel aura mobs, raycast amortization, and safety flags"
+  },
+  {
+    "id": "b5311ded45897079d712604e3c250c5f67e06727",
+    "title": "fix(milestone-4): restore full visual parity for mob auras across entire camera view"
+  },
+  {
+    "id": "e86905d230bf20989d51b6384eaa31d67d9d7c30",
+    "title": "feat(perf): Milestone 5 - GPU Saturation via Parallel CROW FrameMove & Stride Particle LOD"
+  },
+  {
+    "id": "e9ea040f05ea1ff9dbff5cb3a1424aff13ee91c5",
+    "title": "fix(crash): restore sequential execution for GLCrowClient::FrameMove on Main Thread"
+  },
+  {
+    "id": "c956db637c629c7f2da219641ab2873f06feb124",
+    "title": "Milestone 5: GPU saturation & CPU bottleneck elimination (D3D9 VB lock bypass, piece fast-reject, universal nameplate amortization)"
+  },
+  {
+    "id": "11f1385da0c9a448df51886fd2d65a3ea5fe865e",
+    "title": "perf(engine): Milestone 5 Follow-up - Billboard inversion caching, AroundEff hot-loop optimization, Optical Area Compensation, and FPS uncap"
+  },
+  {
+    "id": "a6905fde464cc32628d3d602ae798788ed3e45b5",
+    "title": "fix(render): stop 164M D3D9 state reads, decouple billboard matrices, stabilize particle stride LOD"
+  },
+  {
+    "id": "8712a4b863b44d07fceede579df9c4416acadd5d",
+    "title": "docs: add Plan 90 full DX9 cutover & zero D3D9 device read master plan"
+  },
+  {
+    "id": "2b3ff752723327ad945eb47ea8f535bb4c0a3888",
+    "title": "feat(Plan 90 - Milestone 1): Implement self-describing shadow and overlay pipeline without D3D9 COM reads"
+  },
+  {
+    "id": "eae7fa90f5592e2e7a41495912fb6e700f2f7fe6",
+    "title": "fix(shadow): restore soft translucent ground shadow for characters and NPCs"
+  },
+  {
+    "id": "ff3ccb3be773025e4fc584cdff3960470df0bd1e",
+    "title": "fix(shadow): soften ground shadow to match authentic look and eliminate weapon blue spots"
+  },
+  {
+    "id": "209c7c17bb535b3cfd8573f36f508603e2e3bc8e",
+    "title": "fix(shadow): zero-trust hardening for ALPHABLENDENABLE in D3DXImageBlur"
+  },
+  {
+    "id": "df6ec3d8b75e42650b2a591c6b92658bfc86e254",
+    "title": "fix(shadow): restore authentic translucent ground shadow (kk=0.025) and eliminate weapon blue artifacts"
+  },
+  {
+    "id": "f020d0aec34fb02c448ba919b597405526674f6d",
+    "title": "fix(effect): remove stroboscopic LOD stride skipping to fix far-distance aura flickering"
+  },
+  {
+    "id": "b5af1f5254395d2555282452316f3ec69a7dcbba",
+    "title": "fix(shadow): restore character, mob, and weapon ground shadows with authentic kk=0.15f and rigid bone updates"
+  },
+  {
+    "id": "f92466e169ef65f3db185e85cff882547cb0dfc2",
+    "title": "feat(rhi): Plan 90 Phase 2 - SimpleMesh & Static Mesh Pure Self-Describing Pipeline (Zero D3D9 COM Reads)"
+  },
+  {
+    "id": "cc3a43378f4c7ed0f74d36615206230e4d72c1ae",
+    "title": "revert(rhi): revert simmesh descriptor override to fix broken effect meshes (wings, auras, effects)"
+  },
+  {
+    "id": "b1456288e39752af81de50e0c2c04bb65393a0f7",
+    "title": "fix(editor): prevent window destruction crash and unpause underflow in EditorSkinPiece and d3dapp"
+  },
+  {
+    "id": "89b728909b202b0a3d40586902d7d9f4ff383481",
+    "title": "feat(rhi): Plan 90 Phase 2 - Terrain Octree Material Descriptor Caching & Missing Shaders Resolution"
+  },
+  {
+    "id": "0174ec336db5d3499de4d30ac9b4c167f5b65e6f",
+    "title": "feat(rhi): Plan 90 Phase 2 Completion - Static Props Descriptor Caching & SimItem Zero-Read"
+  },
+  {
+    "id": "e83fcca56dfaf6c2c001c59cc88947f1c4f4382b",
+    "title": "Merge branch 'feature/plan-90-phase2-completion' into feature/plan-90-cutover-next"
+  },
+  {
+    "id": "e26c6c9d91ac8c77cf8d1b64d4a87c2f0c4be949",
+    "title": "feat(rhi): Plan 90 Phase 3 - Character Single-Pass UberShader & Self-Describing Overlay/Shadow Pipeline"
+  },
+  {
+    "id": "acf7db26db36b3f439afd8ac4d87235ef587ff9e",
+    "title": "Merge branch 'feature/plan-90-phase3-ubershader' into feature/plan-90-cutover-next"
+  },
+  {
+    "id": "c4abe0c15ad58f866caca9b1d09d0eee7540667b",
+    "title": "feat(rhi): Plan 90 Phase 4 - Full D3D9 Seam Retirement & Pure Zero-Device-Read Cutover"
+  },
+  {
+    "id": "94ff4431b20f282ae12d0290bb615df75f2c2503",
+    "title": "fix(rhi): separate own and shared state trackers in RanRHI_Bgfx to eliminate leak and heap corruption"
+  },
+  {
+    "id": "4afe6a54abf13c006da2961d75b42217369a0a3c",
+    "title": "feat(logic,ui): uncap distant nametag visibility across camera frustum with tiered near-raycast optimization"
+  },
+  {
+    "id": "b569cf960c1f8a7bd130fc3c17c17390c7c8a360",
+    "title": "feat(logic,ui): reference actor rendering distance from player character and restore x32 crow list parity"
+  },
+  {
+    "id": "01d361c3f869a490303b4719e673aa155abccfb4",
+    "title": "fix(logic): restore x32 direct raycast occlusion check to prevent nameplates penetrating scene geometry"
+  },
+  {
+    "id": "642dbc52d78dc6b42005059148e8ea1d4f0f592a",
+    "title": "fix(scene): implement piece object occlusion in DxLandMan::IsCollision to prevent nametags penetrating props and buses"
+  },
+  {
+    "id": "3622e17540892f21340b8c128a5b6b6c1f76cbbb",
+    "title": "feat(ui): bind Anti-Aliasing options in RanRmlOption data model and RANPARAM"
+  },
+  {
+    "id": "617bda1dbe792f123ba14b0f0ff4c199d94f8c21",
+    "title": "fix(ui,logic): restore x32 nametag and shop culling parity and silence raycast log spam"
+  },
+  {
+    "id": "643fd0ad2f22a89f902c988a76c23a2a936016ec",
+    "title": "fix(editor,mesh): enable SkinShader in EditorSkinPiece and harden bone/neon render guards"
+  },
+  {
+    "id": "11fce23aa16c0c7f6db946661f1902f932ac875e",
+    "title": "feat(graphics): Anti-Aliasing Step 1 - FXAA 3.11 Quality with zero UI blur and RmlUi option integration"
+  },
+  {
+    "id": "b4a4cfb0b4b1971b50a34cf03ac5a6efa45c06eb",
+    "title": "fix(graphics,ui): 2-column option layout & eliminate FXAA full-screen blur with exact 1:1 pixel alignment"
+  },
+  {
+    "id": "a4ea6fb5b7a9d275d338e6eb1a95ec6e7574e26b",
+    "title": "feat(graphics): Add Hardware MSAA (2x/4x/8x) support to RHI and settings UI"
+  },
+  {
+    "id": "d8b13d3d40d9043710fc91c693f3ae4ee6ddc1df",
+    "title": "refactor(graphics): apply senior auditor refinements for MSAA slot reset, cycle AA, and doc comments"
+  },
+  {
+    "id": "acf61bee66ca0ed92e87a7dd57c341647af1a729",
+    "title": "fix(graphics,effect): MSAA framebuffer lifecycle & restore stable character particle rendering"
+  },
+  {
+    "id": "ca7e7ef0cdfa1b0855324e1fb81ad605c10b5683",
+    "title": "Merge branch 'master' into feature/plan-90-phase4-final-cutover"
+  },
+  {
+    "id": "312a7970b9817fed79b5ec77c1f4ae71834cd13a",
+    "title": "docs(plan): add Plan 91 - Multi-Backend (DX11, DX12, Vulkan) selection and fallback architecture plan"
+  },
+  {
+    "id": "d91c19c169843fdb0642b760e31074b865f1f793",
+    "title": "feat(rhi): Plan 91 - Implement Multi-Backend Graphics API Selection (DX11, DX12, Vulkan) with Self-Healing Fallback Circuit Breaker and RmlUi Settings Integration"
+  },
+  {
+    "id": "cd7c6c33f289e8389bc2aa0ca56ac4b40d600269",
+    "title": "perf(rhi): unlock DirectX 12 throughput with Triple Buffering (numBackBuffers=3) and eliminate DWM flip fence stall"
+  },
+  {
+    "id": "29b6177210d6c982192f564950c25d66c37a052f",
+    "title": "chore(bgfx): update submodule commit with d3d12 flip stall fix"
+  },
+  {
+    "id": "8eb59564ebd95246a3f77e50e7a09d3d9910c1b0",
+    "title": "feat(d3d12): unlock windowed FPS with DXGI tearing persistence and unsuppressed swapchain telemetry"
+  },
+  {
+    "id": "e653853e0ff03f55fedf969de5258301620ad643",
+    "title": "fix(RanRHI_Bgfx): enable BGFX_RESET_FLIP_AFTER_RENDER and bump bgfx for DX12 uncap"
+  },
+  {
+    "id": "f3e20ea50297d026b3d973a1f211b6f498ad133f",
+    "title": "fix(d3d12): update bgfx submodule for proper tearing and zero-stall swapchain"
+  },
+  {
+    "id": "7310d54206c715b9e6251e34aaf00f82dc989b6e",
+    "title": "fix(effects): optimize effect billboarding vector math and weapon blur trail arc"
+  },
+  {
+    "id": "33ee379b8fd76c8c1aff9778f00315c1d6092d04",
+    "title": "docs(plan-92): add master architectural plan for zero-cut effect optimization"
+  },
+  {
+    "id": "b0c626990f9894bf296648ca61820ce4546daa7a",
+    "title": "feat(plan-92): implement zero-cut effect optimization, night point light culling, and SIMD vector math"
+  },
+  {
+    "id": "76cf756c08f238234b646195203766c5da8393e3",
+    "title": "docs(plan-93): add master architectural plan for modern simd math and skeletal acceleration"
+  },
+  {
+    "id": "9bb6278a2eaf4f195093d52389d9aa5295731822",
+    "title": "feat(plan-93): implement modern simd math, skeletal affine synthesis, and vector culling acceleration"
+  },
+  {
+    "id": "23919a346a0e6e8d9d0bacc8cb691cf3ebddbf6b",
+    "title": "chore(bgfx): update submodule commit with d3d12 staging pool and profiler"
+  },
+  {
+    "id": "06d9893b38b23d0fe22f5d4a464cb23bf50888e7",
+    "title": "merge: Plan 91, 92, and 93 (Multi-Backend Selection, Zero-Cut Effect Optimization, Modern SIMD Math & Skeletal Culling Acceleration) into master"
+  },
+  {
+    "id": "3a8c7ac89bb6a6f5a51298ed44c5e8a29afa1758",
+    "title": "feat(crowd): implement Plan 94 Behind-Front 2.5D screen occlusion culling and phase-interleaved update throttling"
+  },
+  {
+    "id": "e698bd5d71b9de892c9577fb43f83c79f62d2ec1",
+    "title": "merge: Plan 94 (Behind-Front Crowd Occlusion Culling & Phase-Interleaved Update Throttling) into master"
+  },
+  {
+    "id": "4d50e496886d50c38e9dcbbef797254515515d79",
+    "title": "docs: add FSR 3.1 architectural plan and skillmd tools to master"
+  },
+  {
+    "id": "b1692f6c3ffcdf6e8283ae03757c40f4c6c68474",
+    "title": "fix(render): isolate bone matrices per actor instance, exempt NPCs from throttling, and fix duplicate AttribId subsets in RanRHI"
+  },
+  {
+    "id": "7a41ac85d9ec95ac0628c57ae11f8ca0b8e2cc0d",
+    "title": "fix(skinning): restore Zodiac Dragon 3D mesh, implement DxCharPart::UpdateSkinPalette lazy evaluation, and eliminate 16-frame lag"
+  },
+  {
+    "id": "ee2442a61df24de9a071e517ea1f03780dd698b3",
+    "title": "feat(i18n): implement RFC 4180 CSV localization engine with UTF-8 BOM and Thai locale fix"
+  },
+  {
+    "id": "0cecbfeeeb38903c3d2715bdd2e76dccaf3b8651",
+    "title": "feat(i18n): populate English translations across all CSVs with reference XML and curated fallbacks"
+  },
+  {
+    "id": "95338d9565cd0d0a0b15466e02b5b75e7c5f8dd9",
+    "title": "feat(ui): add in-game language selector in settings window and fix ClearText dangling pointer"
+  },
+  {
+    "id": "809e6bfde802932fe5405399960a7aecfaf334ae",
+    "title": "fix(i18n): restore corrupted PostBox Thai texts and align modal indices"
+  },
+  {
+    "id": "b3781245040b2980812f8a9593b9ee817e311d93",
+    "title": "feat(i18n): externalize hardcoded C++ strings to CSV localization engine (th/en)"
+  },
+  {
+    "id": "a0c0ec20f96dfb489e242d7a31676cc73e489f34",
+    "title": "fix(i18n): fix ResolveCodePage and UTF8ToAnsiSafe to preserve Thai CP874 and eliminate ???? corruption"
+  },
+  {
+    "id": "e84304d7f31e6210e612f0f27f7cbc552fbd3204",
+    "title": "feat(ui): make Option window bilingual and add chat feedback for language change"
+  },
+  {
+    "id": "819341f8fc3001b6b4db15ae09c3076389260b22",
+    "title": "feat(ui): implement real-time dynamic UI language hot-reload for ESC menu, toolbar, chat tabs, and news window"
+  },
+  {
+    "id": "d4f309a53e5133afe3f71ade379627d76d0172a8",
+    "title": "fix(localization): resolve chat mojibake and implement dedicated RmlUi CSV localization engine"
+  },
+  {
+    "id": "d209146270d4bbcdd0135a9752625ab48bc024aa",
+    "title": "feat(rmlui): implement global multi-language runtime switching and fix font italic warning"
+  },
+  {
+    "id": "29effd08f727d6ade7efb21017a29c697ac12e41",
+    "title": "feat(ui): fix item mall categories en translation, enable attribute @KEY@ resolution, and set option tabs English"
+  },
+  {
+    "id": "c780129f947889b5d1c585899612cc2e2d45ddf6",
+    "title": "feat(ui): localize inventory sort button and tooltip to english"
+  },
+  {
+    "id": "2783e8af6c018327bc5fcddac2ba7dd8c1679050",
+    "title": "feat(localization): migrate hardcoded display strings in cpp to csv"
+  },
+  {
+    "id": "f602bf245d44828a0bc3cf3a206b4439fdf35c84",
+    "title": "feat(chat): full multi-language localization for RmlUi chat system"
+  },
+  {
+    "id": "cbe2b982c7af239e10ef76b87084e61c2ce2ef96",
+    "title": "feat(i18n): implement dual-mode fallback loader for Item, Skill, Crow, and Quest in GLogic"
+  },
+  {
+    "id": "b823eb73232554ccd3c3828df85db455502fdbfa",
+    "title": "feat(i18n): complete multi-language localization, dual-mode fallback, and texture overhaul"
+  },
+  {
+    "id": "19471316bd849ea2a185abc3c8620feeff98069a",
+    "title": "docs: add Plan 97 Modern 3D Rendering Pipeline Overhaul Master Plan"
+  },
+  {
+    "id": "2dcbc963d015e4559c93498235410149281fd4bf",
+    "title": "feat(render): implement Plan 97 Zero-D3D9 cutover, SIMD skinning, and multi-encoder support"
+  },
+  {
+    "id": "d1c978323bfbb09571e0618fab5570a75e00002c",
+    "title": "feat(render): expand Character UberShader to 128 bones and add double-checked lock in GetFFProgram"
+  },
+  {
+    "id": "7394a40ce3a7e97012c7311c754d5482b66a94bf",
+    "title": "fix(render): harden indexed bone clamping and null device check in skin shader"
+  },
+  {
+    "id": "278840474c760beef34a9512851ad01535987284",
+    "title": "feat(render): implement Plan 97 Phase 2 decoupled flat skeleton and lock-free rendering"
+  },
+  {
+    "id": "30e6c995d4c901910cc8d4a939d1cd31cd40b3ae",
+    "title": "feat(render): implement Plan 97 Phase 3 flat topological skeleton evaluation and multi-encoder mob submission"
+  },
+  {
+    "id": "dda04b93200ed1e6779baae587b30ae41c8a89a8",
+    "title": "feat(render): implement Plan 97 Phase 3.2 transient dynamic VB cutover and Phase 4 hardware instancing API"
+  },
+  {
+    "id": "00b0a11f904106a03ad6e1c0692cef2f309c9872",
+    "title": "fix(render): restore 64-bone shader alignment and hierarchical bone evaluation to prevent model deformation"
+  },
+  {
+    "id": "aa0f1ccc7dba87cf9d4a03149e9b32fd862f12bc",
+    "title": "fix(render): deploy 64-bone compiled shader binaries and restore direct bone pointer resolution in DxCharPart"
+  },
+  {
+    "id": "3be662f998259b1e8765ddb767ae917fbd8ae0ee",
+    "title": "fix(render): eliminate model and scene flicker by defaulting mob draw calls to safe main thread"
+  },
+  {
+    "id": "4cf1181087e44d2f30846634e4769ad2c42d3d71",
+    "title": "Merge branch 'feature/plan-97-modern-3d-pipeline-overhaul' into master"
+  },
+  {
+    "id": "84febce551bb0350b3774ef3cf08a06090b79860",
+    "title": "docs: add Plan 98 Engine-Wide Modernization Master Roadmap (6-Pillar Core Modernization)"
+  },
+  {
+    "id": "b0f08cb9775bbdc48ce28b7cc63a9fdd20b68108",
+    "title": "docs: enrich Plan 98 roadmap with comprehensive code-level specs across 6 pillars"
+  },
+  {
+    "id": "b49ca7d568824f104cd74347b63292c2a2aab658",
+    "title": "docs: integrate Zero-Bias post-audit enhancements into Plan 98 roadmap"
+  },
+  {
+    "id": "db5251f59be132e2fe68fc27cb057746c0ff7701",
+    "title": "feat(engine): implement Plan 98 Phase 1 (1A Effect Modernization & 1B World Props Instancing)"
+  },
+  {
+    "id": "29d2b6df005beba056fb55dba3ed8780b2e943d0",
+    "title": "fix(client): enable continuous mouse-tracking and looping for ground click effect when holding mouse"
+  },
+  {
+    "id": "5a4ab307ed59791f0238bea4095e06368a50516f",
+    "title": "Plan 98 Phase 2 Complete: Modern Audio Engine (Miniaudio) and High-Performance Input Engine (Win32 Raw Input + XInput)"
+  },
+  {
+    "id": "2d69afec628392ac73163b0201a8b54af3d0082b",
+    "title": "feat(ui): implement Plan 98 Phase 3 (Native RmlUi HUD Migration & WebView2 Retirement)"
+  },
+  {
+    "id": "ff1aa22500845704cbacaa6603fac9090cd62ea2",
+    "title": "feat(server): implement Plan 98 Phase 4 (Async DB Connection Pool & Linux Readiness)"
+  },
+  {
+    "id": "279dd50e84db4a963148f693b86b846011013055",
+    "title": "feat(mobile): implement mobile controls, targeting, dead target auto-clearing, and RmlUi mobile interfaces"
+  },
+  {
+    "id": "b40743aea6151f520b6f1f47462a6b67b2c645b9",
+    "title": "merge: integrate Plan 98 and Mobile Mode modernization into master"
+  },
+  {
+    "id": "3cebe0601bb789a76e1d17c462174eae9606d12f",
+    "title": "feat(editor): integrate skinpiece and skinchar bgfx improvements into master"
+  },
+  {
+    "id": "833f5df4c0f183c86e14cfbd9c62f19691cd42a8",
+    "title": "docs: establish Plan 99 master architectural blueprint for .X to .GLB cutover and crossplay asset pipeline"
+  },
+  {
+    "id": "8826da881330c5fc842ab7db689ad98ee09a0f6b",
+    "title": "feat(mesh): implement Plan 99 Phase 1 Real-time Spring Bone and Verlet Physics for cloth and hair"
+  },
+  {
+    "id": "f837610994abd3300a815ecc7253baa4085a1f91",
+    "title": "feat(render): implement Plan 99 Phase 2 Screen-Space Derivative Normal Mapping and Shaders"
+  },
+  {
+    "id": "852c1526b8fb229e5548227603af2cfedd0ca8c0",
+    "title": "feat(mesh): implement Plan 99 Phase 3 Dual-Format glTF 2.0 and .glb Loader"
+  },
+  {
+    "id": "db8152a211f02131dcdb9ab677283024d9954d5e",
+    "title": "feat(render): implement Plan 99 Phase 4 Full PBR Shading & Hardware MikkTSpace Tangents"
+  },
+  {
+    "id": "2918f8b8a82fa7b5d218d5b487ed6ee136ebbfb0",
+    "title": "feat(mesh): implement Modern Override (.glb first over .cps/.x) in DxSkinPiece"
+  },
+  {
+    "id": "28a2123320f906797bb73854dd61ed058d259a21",
+    "title": "feat(mesh): implement mesh-level modern override (.glb fallback when .x is missing) & crash guards"
+  },
+  {
+    "id": "78b1a7c41f5987d6aaa62d831c3257b6f0d97346",
+    "title": "feat(mesh): implement true GLB first override in LoadSkinMesh & path whitelist in GetSkinFilePath"
+  },
+  {
+    "id": "332d9fa83ad402037a6b735c020ecd8989c33c68",
+    "title": "feat(skeleton): implement pure modern GLB skeleton loading & path whitelist in DxSkeleton"
+  },
+  {
+    "id": "a7cfbc323259e63378ca563a0a2ae0b744b1399d",
+    "title": "feat(editor): support *.glb mesh and skeleton picking & fix skeleton mismatch check in EditorSkinChar/EditorSkinPiece"
+  },
+  {
+    "id": "4b050ce645f113834a885c5044eb91a2c433e562",
+    "title": "fix(mesh): guard unskinned glTF piece loading against GenerateSkinnedMesh crash and zero-initialize SMeshContainer"
+  },
+  {
+    "id": "c5b4215e407e1ba371ea08ad7f6835684fb4c588",
+    "title": "feat(mesh): support glTF in DxSimpleMeshMan, fix virtual FindMeshContainer for .cps loading, and eliminate piece missing crash popup"
+  },
+  {
+    "id": "1bccf71c771862c4638b9e4875d4f364fef8f850",
+    "title": "Fix(Engine): prevent crash on NULL pTextureFilename in DxEffCharLevel and add safe string guards"
+  },
+  {
+    "id": "cbe5855de8d73378ebf2f6713435b1aec6bc4764",
+    "title": "Fix(Core): harden FindBone against NULL string, resolve unskinned rigid part crash, and prevent invalid ABL equipment fallback"
+  },
+  {
+    "id": "a520418b3b42efb4f51418cd3afa0c55745d608e",
+    "title": "feat(mesh): implement centralized DxMeshPathResolver, wire simple mesh GLB override, and harden MFC new overloads"
+  },
+  {
+    "id": "0237fbb60267089935e167014cc851a783fa8d1b",
+    "title": "feat(skeleton): extend dual-alias bone mapping to legacy .x skeleton parser for 2-way interoperability"
+  },
+  {
+    "id": "f128d73b00305ca19da7522d4d0bca36b551c4d1",
+    "title": "feat(plan-99): redirect .dds to .png and normalize texture pipeline"
+  },
+  {
+    "id": "72378d658e512f34dc5f9838fd9940d604c2a95f",
+    "title": "docs(plan-99): integrate .dds to .png cutover and transparent texture redirection into master plan"
+  },
+  {
+    "id": "791977b941aadde46d6c3e9135b8f262f4cc0d1d",
+    "title": "merge: integrate Plan 99 (.X to .GLB cutover) into master"
+  },
+  {
+    "id": "d7f700ff3f0b0104579730e8a125102b409affa5",
+    "title": "docs: add Plan 102 - fix overlay decalbias pool stale camera"
+  },
+  {
+    "id": "c9e24ea9fc5c95ac7e14a3a176955a8caba5e2c1",
+    "title": "fix(bgfx): refresh decal bias pool views every frame when pool is occupied"
+  },
+  {
+    "id": "22bba991c4fd8d5ee700b87ad19dcaad80fc6890",
+    "title": "refactor(eff): unify bone palette setup across character effects and scopes"
+  },
+  {
+    "id": "8d9a72bc1c745e1d3a97ef9ba6a7a46f01becb7e",
+    "title": "docs: add Plan 103 - fix ghosting stale palette plan"
+  },
+  {
+    "id": "572457bc7ebb784bc5ee4425966d2069b27163be",
+    "title": "merge: integrate Plan 102 (fix overlay decalbias pool stale camera) into master"
+  },
+  {
+    "id": "0b8a29c78bd155f575e8436055a90703f747e6be",
+    "title": "fix(eff): draw ghosting trails with their own past-pose bone palette"
+  },
+  {
+    "id": "e7d799584d303631bc60362293dbc7f1dd533853",
+    "title": "fix(eff): ghosting list erase reads end() and guard zero unit"
+  },
+  {
+    "id": "2a4bf0d6e27b210f6af6f5d6ccce6f2b3f01fb5f",
+    "title": "merge: integrate Plan 103 (fix ghosting stale palette and erase bug) into master"
+  },
+  {
+    "id": "aa4d5ff0df09e9f9957d437964818505e118d569",
+    "title": "docs: add Plan 100 master plan for bin-to-glb animation cutover and cfg redirection"
+  },
+  {
+    "id": "f63fe8770afc5a1c320f219f47d861eb368f5e0c",
+    "title": "feat(anim): implement Plan 100 bin-to-glb cutover, DxAnimPathResolver, and ran_bin_to_glb tool"
+  },
+  {
+    "id": "33b606011cbeb46bc2feccc39eabd96a29a1df3c",
+    "title": "docs: restore Plan 101 specification document in skillmd"
+  },
+  {
+    "id": "0935d719f038d7ad0e3aca14283c6f6c97b2265c",
+    "title": "feat(editor): cutover animation cfg to glb transparent redirection and update EditorSkinChar file dialogs"
+  },
+  {
+    "id": "6622a13a5abe685e5c1b49112cc66a3aef5f9566",
+    "title": "fix(skinning): resolve facial distortion, UV V-axis flip, and mesh container [Mesh] tag mismatch"
+  },
+  {
+    "id": "c4a6f5fcf54a4f5ad90fa2ec14166707fe1d58dd",
+    "title": "merge: integrate Plan 100 (.bin to .glb animation cutover and skinning fixes) into master"
+  },
+  {
+    "id": "5007a712a87173cc84f670e29dfd400f60d0965f",
+    "title": "fix: alpha cutout detection and vehicle foot attach fallback"
+  },
+  {
+    "id": "e3f5d9849f50d22cf0b5b52c938ac9219c0b5cc9",
+    "title": "fix(gltf): build attribute table for glTF meshes so RanRHI seam accepts unskinned pieces (plan 104)"
+  },
+  {
+    "id": "fbbe42a487a00e7bc20b2f4c044098eecf3fcd43",
+    "title": "fix: alpha cutout proportional ratio scan and ground shadow restoration (plan 105)"
+  },
+  {
+    "id": "16caac2d63628d384693ab81206714be3dc999de",
+    "title": "feat(glb): implement Plan 106 - trace points rebinding for glTF skin pieces"
+  },
+  {
+    "id": "f8cc3a0872f676a5639f9d3ed565f52f75fc2849",
+    "title": "fix(trace): restore wide ribbon trails by fixing trace_glb.rtb header offset and signature matching"
+  },
+  {
+    "id": "443f7fac0c352549b2c0efaca1eb114e3fb1717c",
+    "title": "feat(cutover): implement Plan 107 Phase 0 - telemetry, asset mode gate, and headless sweep"
+  },
+  {
+    "id": "50c391884a710afe638aa4ccc744188b7b1ab0b2",
+    "title": "fix(gltf): plan 108 glb costume color, neon parity, and submesh preservation"
+  },
+  {
+    "id": "2efc9bb772b2eedc5c85e84a782cfce837d56144",
+    "title": "feat(cutover): implement Plan 107 Phase 1 - convert remaining 42 assets, rebake trace DB, and fix engine glTF loaders"
+  },
+  {
+    "id": "510d7eb5b0ea4e7b009822b8cda9228445a62b90",
+    "title": "fix(assets): Plan 109 - parse DeclData in .x models and enforce material slot parity"
+  },
+  {
+    "id": "844577b96eefa3d85ffa29a88ad07e9c0f7a8f8a",
+    "title": "feat(assets): Plans 111 & 112 - fix attrib OOR subsets and re-export 824 bzip DeclData models corpus-wide"
+  },
+  {
+    "id": "f35ca2092e26b4c3965c7c1223af96e254aa534d",
+    "title": "fix(anim): Plan 114 - preserve cfg ETime at runtime in LoadAnimFromGLTF and eliminate bus stop sway"
+  },
+  {
+    "id": "7515bedbfb1869aee43e0aefd9b7b045ce4e5e94",
+    "title": "feat(cutover): implement Plan 107 Phase 2 & 3 - parity verification suite, RCC cipher audit, and .cps 0x0202 trace decoupling"
+  },
+  {
+    "id": "2e3186c821e3ae6fff0abd7b82e74e953a17b77a",
+    "title": "feat(cutover): implement Plan 107 Phase 4 - editor modernization, CPS 0x0202 migration tool, and Blender-to-GLB pipeline docs"
+  },
+  {
+    "id": "1614aeb3f10f1e692b06d2549ebd0aaa86a7fff8",
+    "title": "feat(cutover): implement Plan 107 Phase 5 - GLB slimming, Core EP7 deployment, and legacy compile guards"
+  },
+  {
+    "id": "95398fb7141196084206878476284b6a10efe3e5",
+    "title": "feat(cutover): add ran_legacy_archive tool for safe quarantine and rollback"
+  },
+  {
+    "id": "4f79a6bfc6b5f5fa6b17ed1639f2c191360bafd4",
+    "title": "merge: integrate Plans 104-109, 111-112, 114, and Plan 107 full asset cutover into master"
+  },
+  {
+    "id": "e7ee3b68f964efffe77750a15f940f306435ecdb",
+    "title": "feat(effects): implement Plan 117 generic tail effect freeze fix and telemetry"
+  },
+  {
+    "id": "f472b12477716185c627b04f3f988b2066b43d1f",
+    "title": "feat(effects): implement Plan 118 fix for uninitialized fulllife in charblur union property"
+  },
+  {
+    "id": "6202fe4c1a92fb8cc7dea53c5d2ec4d46e61cf7d",
+    "title": "feat(effects): set 0.45s as default blur lifetime and reorder blursys trimming before stuck check"
+  },
+  {
+    "id": "98c7beb8b1c8b9f0fa78ff75c774567c86f701eb",
+    "title": "merge: integrate Plan 117 and Plan 118 tail effect freeze fixes into master"
+  },
+  {
+    "id": "7ddc252e970a600e31953c4a754c03f74319d115",
+    "title": "chore: ignore python cache files, remove legacy pyc from tracking, and track plan 110"
+  },
+  {
+    "id": "e53b3060ed4601410980342622cca49c7d11c2e8",
+    "title": "fix(warp): resolve map transition crash in DescribeMiss SEH and GLGaeaClient stage cleanup"
+  },
+  {
+    "id": "b3a5b40c2b7d8f2b6d8b03938b5df8ce80d53dc7",
+    "title": "feat(crossplay): implement Plan 120 - PNG texture pipeline, d3dx9 decoupling, and mock device shimming"
+  },
+  {
+    "id": "e2b72d216f70810755e38990cccdcb18886c520e",
+    "title": "fix(render): eliminate texture use-after-free in skinpiece-mesh aliasing (Plan 121)"
+  },
+  {
+    "id": "0057f9797b54fb33026e7f7d4e556593197a19de",
+    "title": "merge: integrate Plan 120 (pure bgfx png) and Plan 121 (warp texture use-after-free fix)"
+  },
+  {
+    "id": "2f5f4cc3a2ce6d50ddce5a7e860d80f90fc2e38e",
+    "title": "feat(mobile): optimize aim indicator ground ribbon rendering"
+  },
+  {
+    "id": "2be7b692411c7f97a3bcf5d9ea5c386c64b4244f",
+    "title": "fix(mobile): widen aim ground ray for steep slopes and NaN-safe ribbon half-width"
+  }
+]
