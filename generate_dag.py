@@ -294,9 +294,12 @@ def generate(repo_path=None, max_count=None, output_path=None):
         e_idx = max(all_indices)
         lane = allocate_lane(b["type"], s_idx, e_idx, b["name"])
         color = branch_palette[i % len(branch_palette)]
-        for c in b["shas"]:
+        cur_sub_name = b["name"]
+        for idx_c, c in enumerate(b["shas"]):
+            if idx_c > 0 and c in head_refs and head_refs[c] != primary_branch:
+                cur_sub_name = head_refs[c]
             commit_lane[c] = lane
-            commit_lane_name[c] = b["name"]
+            commit_lane_name[c] = cur_sub_name
             commit_lane_color[c] = color
 
     # Safety fallback for any orphan commit
@@ -310,9 +313,48 @@ def generate(repo_path=None, max_count=None, output_path=None):
     NODE_HEIGHT = 88
     X_SPACING = 85
     Y_SPACING = 120
+    WIP_SPACING = max(X_SPACING + 95, 180)
+
+    # Pre-calculate WIP node placement and lane allocation so it never collides with other branches
+    head_commit_sha = branches.get(head_branch, {}).get("hash", head_rev) if dirty_lines else None
+    has_active_wip = bool(dirty_lines and head_commit_sha and head_commit_sha in topo_index)
+    wip_h_idx = topo_index[head_commit_sha] if has_active_wip else -1
+    wip_lane = 0
+    wip_lane_name = ""
+    wip_lane_color = "#06b6d4"
+
+    if has_active_wip:
+        h_lane = commit_lane.get(head_commit_sha, 0)
+        has_later_on_h_lane = any(
+            commit_lane.get(c) == h_lane and topo_index[c] > wip_h_idx
+            for c in sorted_commits
+        )
+        if head_branch != primary_branch and head_branch != "DETACHED":
+            if h_lane != 0 and not has_later_on_h_lane:
+                wip_lane = h_lane
+                wip_lane_name = commit_lane_name.get(head_commit_sha, head_branch)
+                wip_lane_color = commit_lane_color.get(head_commit_sha, "#10b981")
+            else:
+                wip_lane = allocate_lane("open", wip_h_idx, wip_h_idx + 1, head_branch)
+                wip_lane_name = head_branch
+                wip_lane_color = branch_palette[len(dynamic_branches) % len(branch_palette)]
+        else:
+            if h_lane == 0 and not has_later_on_h_lane:
+                wip_lane = 0
+                wip_lane_name = f"{primary_branch} (WIP)"
+                wip_lane_color = "#06b6d4"
+            elif not has_later_on_h_lane:
+                wip_lane = h_lane
+                wip_lane_name = f"{commit_lane_name.get(head_commit_sha, head_branch)} (WIP)"
+                wip_lane_color = commit_lane_color.get(head_commit_sha, "#10b981")
+            else:
+                wip_lane = allocate_lane("open", wip_h_idx, wip_h_idx + 1, head_branch)
+                wip_lane_name = f"{head_branch} (WIP)"
+                wip_lane_color = "#f59e0b"
 
     # Dynamic BASE_Y to guarantee upper lanes have clean top margin
-    min_lane = min(commit_lane.values()) if commit_lane else 0
+    all_assigned_lanes = list(commit_lane.values()) + ([wip_lane] if has_active_wip else [])
+    min_lane = min(all_assigned_lanes) if all_assigned_lanes else 0
     if min_lane < 0:
         BASE_Y = 120 + abs(min_lane) * (NODE_HEIGHT + Y_SPACING)
     else:
@@ -324,7 +366,8 @@ def generate(repo_path=None, max_count=None, output_path=None):
     for idx, c in enumerate(sorted_commits):
         c_data = commits[c]
         lane = commit_lane[c]
-        x = 80 + idx * (NODE_WIDTH + X_SPACING)
+        wip_x_shift = (NODE_WIDTH + WIP_SPACING) if (has_active_wip and idx > wip_h_idx) else 0
+        x = 80 + idx * (NODE_WIDTH + X_SPACING) + wip_x_shift
         y = BASE_Y + lane * (NODE_HEIGHT + Y_SPACING)
         coords[c] = (x, y)
 
@@ -362,56 +405,39 @@ def generate(repo_path=None, max_count=None, output_path=None):
 
     # 8. Dynamic WIP Node for Current Active Branch Working Directory
     active_wip_id = None
-    if dirty_lines:
-        head_commit_sha = branches.get(head_branch, {}).get("hash", head_rev)
-        if head_commit_sha and head_commit_sha in coords:
-            active_wip_id = "active-wip"
-            h_x, h_y = coords[head_commit_sha]
-            WIP_SPACING = max(X_SPACING + 95, 180)
-            active_wip_x = h_x + NODE_WIDTH + WIP_SPACING
-            if head_branch != primary_branch and head_branch != "DETACHED":
-                if commit_lane.get(head_commit_sha, 0) != 0:
-                    wip_lane = commit_lane[head_commit_sha]
-                    wip_lane_name = commit_lane_name.get(head_commit_sha, head_branch)
-                    wip_lane_color = commit_lane_color.get(head_commit_sha, "#10b981")
-                else:
-                    wip_lane = 1
-                    wip_lane_name = head_branch
-                    wip_lane_color = "#10b981"
-            else:
-                wip_lane = 0
-                wip_lane_name = f"{primary_branch} (WIP)"
-                wip_lane_color = "#06b6d4"
+    if has_active_wip and head_commit_sha in coords:
+        active_wip_id = "active-wip"
+        h_x, h_y = coords[head_commit_sha]
+        active_wip_x = h_x + NODE_WIDTH + WIP_SPACING
+        active_wip_y = BASE_Y + wip_lane * (NODE_HEIGHT + Y_SPACING)
+        coords[active_wip_id] = (active_wip_x, active_wip_y)
 
-            active_wip_y = BASE_Y + wip_lane * (NODE_HEIGHT + Y_SPACING)
-            coords[active_wip_id] = (active_wip_x, active_wip_y)
-
-            wip_title = f"Working Tree ({len(dirty_lines)} uncommitted changes)"
-            nodes.append({
-                "id": active_wip_id,
-                "hash": active_wip_id,
-                "short_id": "WIP",
-                "short_hash": "WIP",
-                "title": wip_title,
-                "subject": wip_title,
-                "author": "Local Working Directory",
-                "author_full": "Local Working Tree <uncommitted>",
-                "date": datetime.now().isoformat(),
-                "branches": [head_branch] if head_branch else [],
-                "tags": [],
-                "parents": [head_commit_sha],
-                "lane": wip_lane,
-                "lane_name": f"{wip_lane_name} (WIP)",
-                "lane_color": wip_lane_color,
-                "x": active_wip_x,
-                "y": active_wip_y,
-                "width": NODE_WIDTH,
-                "height": NODE_HEIGHT,
-                "status": "wip",
-                "is_head": False,
-                "is_merge": False,
-                "is_wip": True
-            })
+        wip_title = f"Working Tree ({len(dirty_lines)} uncommitted changes)"
+        nodes.append({
+            "id": active_wip_id,
+            "hash": active_wip_id,
+            "short_id": "WIP",
+            "short_hash": "WIP",
+            "title": wip_title,
+            "subject": wip_title,
+            "author": "Local Working Directory",
+            "author_full": "Local Working Tree <uncommitted>",
+            "date": datetime.now().isoformat(),
+            "branches": [head_branch] if head_branch else [],
+            "tags": [],
+            "parents": [head_commit_sha],
+            "lane": wip_lane,
+            "lane_name": f"{wip_lane_name} (WIP)" if not wip_lane_name.endswith("(WIP)") else wip_lane_name,
+            "lane_color": wip_lane_color,
+            "x": active_wip_x,
+            "y": active_wip_y,
+            "width": NODE_WIDTH,
+            "height": NODE_HEIGHT,
+            "status": "wip",
+            "is_head": False,
+            "is_merge": False,
+            "is_wip": True
+        })
 
     # 9. Edges with Bézier Connections
     edges = []
@@ -470,7 +496,11 @@ def generate(repo_path=None, max_count=None, output_path=None):
             else:
                 edge_type = "normal"
                 color = commit_lane_color[c]
-                label = ""
+                if commit_lane_name.get(p) != commit_lane_name.get(c):
+                    c_name = commit_lane_name.get(c, "branch").replace("feature/", "")
+                    label = f"BRANCH: {c_name}"
+                else:
+                    label = ""
                 edge_branch = commit_lane_name.get(c, "branch")
 
             edge_key = (p, c)
@@ -524,8 +554,6 @@ def generate(repo_path=None, max_count=None, output_path=None):
         if head_commit_sha in coords:
             h_x, h_y = coords[head_commit_sha]
             w_x, w_y = coords[active_wip_id]
-            wip_lane = commit_lane.get(head_commit_sha, 0)
-            wip_lane_color = commit_lane_color.get(head_commit_sha, "#3b82f6")
             if h_y == w_y:
                 svg_path = f"M {h_x + NODE_WIDTH} {h_y + (NODE_HEIGHT / 2)} L {w_x} {w_y + (NODE_HEIGHT / 2)}"
             else:
@@ -547,9 +575,24 @@ def generate(repo_path=None, max_count=None, output_path=None):
                 "svg_path": svg_path
             })
 
-    # 10. Extract diffs
+    # 10. Extract diffs (reuse existing cached commit diffs for fast execution)
+    existing_diffs = {}
+    target_output = os.path.abspath(output_path) if output_path else OUTPUT_JS
+    if os.path.exists(target_output):
+        try:
+            with open(target_output, "r", encoding="utf-8") as ef:
+                eraw = ef.read()
+            if "window.GIT_DAG_DATA = " in eraw:
+                ebundle = json.loads(eraw.split("window.GIT_DAG_DATA = ", 1)[1].rstrip(";\n "))
+                existing_diffs = ebundle.get("diffs", {})
+        except Exception:
+            existing_diffs = {}
+
     diffs = {}
     for c in sorted_commits:
+        if c in existing_diffs and c != "active-wip":
+            diffs[c] = existing_diffs[c]
+            continue
         stat_raw = run_git(["diff-tree", "--root", "--no-commit-id", "--name-status", "-r", c])
         files = []
         for line in stat_raw.strip().splitlines():
@@ -583,11 +626,11 @@ def generate(repo_path=None, max_count=None, output_path=None):
             "full_output": (raw_diff + untracked_block)[:100000]
         }
 
-    all_lanes = list(commit_lane.values())
+    all_lanes = all_assigned_lanes
     total_lanes = (max(all_lanes) - min(all_lanes) + 1) if all_lanes else 8
 
     merged_to_primary_raw = run_git(["branch", "--merged", primary_branch])
-    merged_to_primary = set([b.strip().replace("*", "").strip() for b in merged_to_primary_raw.splitlines() if b.strip()])
+    merged_to_primary = set([b.strip().lstrip("*+").strip() for b in merged_to_primary_raw.splitlines() if b.strip()])
 
     bundle = {
         "schema_version": 2,
@@ -609,7 +652,7 @@ def generate(repo_path=None, max_count=None, output_path=None):
                 "short_hash": data["hash"][:7],
                 "is_head": data["is_head"],
                 "is_merged_to_master": (b in merged_to_primary),
-                "lane": commit_lane.get(data["hash"], 0)
+                "lane": wip_lane if (b == head_branch and has_active_wip) else commit_lane.get(data["hash"], 0)
             }
             for b, data in branches.items()
         ],

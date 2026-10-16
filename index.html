@@ -1374,18 +1374,18 @@
       <div class="git-version-badge-group">
         <div class="git-version-pulse"></div>
         <span class="git-version-badge" id="hud-ver-badge">NEW UPDATE</span>
-        <span class="git-version-tag">v1.0.5</span>
+        <span class="git-version-tag">v1.0.6</span>
       </div>
       <button type="button" class="git-version-close" id="hud-ver-close" title="Close / ปิด">✕</button>
     </div>
-    <div class="git-version-title" id="hud-ver-title">n8n Git UI v1.0.5 Available!</div>
+    <div class="git-version-title" id="hud-ver-title">n8n Git UI v1.0.6 Available!</div>
     <div class="git-version-desc" id="hud-ver-desc">
-      Added multi-language switcher (ENG/TH), 24-hour time format, DAG graph rendering optimizations, and Thai commit display.
+      Added collision-free WIP node lane & X-slot allocation, sub-branch label detection, and diff caching optimizations.
     </div>
     <div class="git-version-diff">
-      <span id="hud-cur-label">Current: <strong style="color:#94a3b8;">v1.0.0</strong></span>
+      <span id="hud-cur-label">Current: <strong style="color:#94a3b8;">v1.0.5</strong></span>
       <span>→</span>
-      <span id="hud-latest-label">Latest: <strong class="highlight">v1.0.5</strong></span>
+      <span id="hud-latest-label">Latest: <strong class="highlight">v1.0.6</strong></span>
     </div>
     <div class="git-version-actions">
       <a href="https://github.com/skszone01/n8n-git-ui" target="_blank" class="git-version-btn primary" id="hud-btn-download">Update n8n UI</a>
@@ -1425,7 +1425,7 @@
     // =========================================================================
     // Multi-Language (ENG / TH) & Version Checker Integration
     // =========================================================================
-    const CURRENT_APP_VERSION = "v1.0.5";
+    const CURRENT_APP_VERSION = "v1.0.6";
     let latestDetectedTag = null;
 
     const I18N_DICT = {
@@ -1454,8 +1454,8 @@
         drawer_expand_off: "Wide: Off",
         drawer_close: "Close Drawer",
         version_new: "NEW UPDATE",
-        version_title: "n8n Git UI v1.0.5 Available!",
-        version_desc: "Added multi-language switcher (ENG/TH), 24-hour time format, DAG graph rendering optimizations, and Thai commit display.",
+        version_title: "n8n Git UI v1.0.6 Available!",
+        version_desc: "Added collision-free WIP node lane & X-slot allocation, sub-branch label detection, and diff caching optimizations.",
         version_cur: "Current",
         version_latest: "Latest",
         version_update_btn: "Update n8n UI",
@@ -1487,8 +1487,8 @@
         drawer_expand_off: "ขยายกว้าง: ปิด",
         drawer_close: "ปิดแถบข้าง",
         version_new: "อัปเดตใหม่",
-        version_title: "มีอัปเดต n8n Git UI v1.0.5!",
-        version_desc: "เพิ่มระบบสลับภาษา (ENG/TH), แสดงเวลาแบบ 24 ชม., ปรับปรุงกราฟ DAG และแสดงผลคอมมิตภาษาไทย",
+        version_title: "มีอัปเดต n8n Git UI v1.0.6!",
+        version_desc: "แก้ไขโหนด WIP ซ้อนทับกิ่งอื่นด้วยการจัดสรร Lane และช่องแกน X อัตโนมัติ พร้อมแคช Diff ความเร็วสูง",
         version_cur: "ปัจจุบัน",
         version_latest: "ล่าสุด",
         version_update_btn: "อัปเดต n8n UI",

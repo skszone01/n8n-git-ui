@@ -490,5 +490,10 @@ window.COMMIT_TITLES_TH = {
   "feat(mobile): optimize aim indicator ground ribbon rendering": "ฟีเจอร์(มือถือ): ปรับปรุงประสิทธิภาพการเรนเดอร์ริบบอนเป้าเล็งบนพื้น",
   "2be7b692411c7f97a3bcf5d9ea5c386c64b4244f": "แก้ไข(มือถือ): ขยายลำแสงเป้าเล็งบนพื้นสำหรับทางลาดชันและป้องกันค่า NaN ในความกว้างริบบอน",
   "2be7b69": "แก้ไข(มือถือ): ขยายลำแสงเป้าเล็งบนพื้นสำหรับทางลาดชันและป้องกันค่า NaN ในความกว้างริบบอน",
-  "fix(mobile): widen aim ground ray for steep slopes and NaN-safe ribbon half-width": "แก้ไข(มือถือ): ขยายลำแสงเป้าเล็งบนพื้นสำหรับทางลาดชันและป้องกันค่า NaN ในความกว้างริบบอน"
+  "fix(mobile): widen aim ground ray for steep slopes and NaN-safe ribbon half-width": "แก้ไข(มือถือ): ขยายลำแสงเป้าเล็งบนพื้นสำหรับทางลาดชันและป้องกันค่า NaN ในความกว้างริบบอน",
+  "e750198b": "[Plan 157] ปรับปรุง Mobile HUD (U2) สไตล์ AAA Dark-Fantasy, แก้ปุ่ม 1-0/F1-F4 และขยาย Minimap (G5/G8)",
+  "6413c276": "[Plan 157] แก้ไขบั๊กปุ่ม Close (X) ทับกันและเพิ่มปุ่มปิดหน้าต่างใน Character / Inventory / Skill / Quest",
+  "6cd96b2c": "[Plan 157] แก้ไข CStringMemory::GetNextLine ข้ามโหมด Binary และซ่อมการอ่านคอลัมน์ crowtext.csv (SaleInvenLoadFile)",
+  "aebcc2f5": "[Plan 157] คืนค่าหมอกเส้นขอบฟ้า (Horizon & Distance Fog) สำหรับภูมิประเทศ NsOCTree และวัตถุฉาก Instanced Props (BGFX)",
+  "23f9ad40": "รวมกิ่ง feature/plan-151-p2-graphics-no-real-d3d9 และ feature/plan-157-s14b-utf8 เข้าสู่ master (Graphics No-Real-D3D9 + UTF-8 + Mobile HUD + Horizon Fog)"
 };
