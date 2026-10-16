@@ -15,6 +15,7 @@ import sys
 import json
 import subprocess
 import argparse
+import tempfile
 from datetime import datetime
 from collections import deque
 
@@ -37,7 +38,7 @@ def find_repo_root(custom_path=None):
 
 REPO_ROOT = find_repo_root()
 
-def run_git(args, cwd=None):
+def run_git(args, cwd=None, check_err=True):
     """Run a git command in REPO_ROOT (or cwd) and return stdout."""
     target_dir = cwd or REPO_ROOT
     try:
@@ -48,13 +49,99 @@ def run_git(args, cwd=None):
             encoding="utf-8",
             errors="replace"
         )
-        if res.returncode != 0:
+        if res.returncode != 0 and check_err:
             err_msg = res.stderr.strip() if res.stderr else f"exit code {res.returncode}"
             sys.stderr.write(f"[WARNING] git {' '.join(args)} failed: {err_msg}\n")
         return res.stdout
     except Exception as e:
-        sys.stderr.write(f"[WARNING] Failed to execute git {' '.join(args)}: {e}\n")
+        if check_err:
+            sys.stderr.write(f"[WARNING] Failed to execute git {' '.join(args)}: {e}\n")
         return ""
+
+def write_atomic_file(target_path, content, encoding="utf-8"):
+    """Atomically write content to target_path using tempfile.NamedTemporaryFile.
+
+    Ensures data durability via flush() and os.fsync(fileno), closes file handle
+    prior to os.replace for Windows compatibility, and guarantees cleanup on failure.
+    """
+    target_abs = os.path.abspath(target_path)
+    target_dir = os.path.dirname(target_abs)
+    os.makedirs(target_dir, exist_ok=True)
+
+    prefix = f".tmp-{os.path.basename(target_abs)}-"
+    tf = tempfile.NamedTemporaryFile(
+        "w",
+        dir=target_dir,
+        prefix=prefix,
+        suffix=".tmp",
+        delete=False,
+        encoding=encoding
+    )
+    tmp_path = tf.name
+    try:
+        try:
+            tf.write(content)
+            tf.flush()
+            os.fsync(tf.fileno())
+        finally:
+            tf.close()
+        os.replace(tmp_path, target_abs)
+    except Exception:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+        raise
+
+def compute_cable_route(x_start, y_start, p_lane, x_end, y_end, c_lane, x_spacing=85):
+    """Compute SVG path and optional label anchor coordinates for an edge cable.
+    
+    Guarantees:
+    1. Zero horizontal S-kinks: dx is clamped so CP1_x <= CP2_x on all spans (dx <= span * 0.45).
+    2. Zero card slicing: when |p_lane - c_lane| >= 2 and span > x_spacing + 10,
+       vertical transition is routed entirely within inter-column channels:
+       - Branch-out (|c_lane| > |p_lane|): vertical transition in channel after parent, then horizontal.
+       - Merge (|c_lane| <= |p_lane|): horizontal, then vertical transition in channel before child.
+    """
+    if y_start == y_end:
+        return f"M {x_start} {y_start} L {x_end} {y_end}", None, None
+
+    span = abs(x_end - x_start)
+    lane_diff = abs(p_lane - c_lane)
+
+    # F4: Channel-aware routing for multi-lane spans crossing intermediate columns
+    if lane_diff >= 2 and span > x_spacing + 10:
+        ch_w = min(float(x_spacing), span * 0.45)
+        dx = ch_w * 0.45
+        if abs(c_lane) > abs(p_lane):
+            # Branching out: transition vertically in channel after parent, then horizontal to child
+            x_trans = x_start + ch_w
+            svg_path = (
+                f"M {x_start} {y_start} "
+                f"C {x_start + dx:.1f} {y_start}, {x_trans - dx:.1f} {y_end}, {x_trans:.1f} {y_end} "
+                f"L {x_end} {y_end}"
+            )
+            fixed_x = (x_trans + x_end) / 2
+            fixed_y = y_end
+        else:
+            # Merging towards trunk: horizontal from parent, then transition vertically in channel before child
+            x_trans = x_end - ch_w
+            svg_path = (
+                f"M {x_start} {y_start} "
+                f"L {x_trans:.1f} {y_start} "
+                f"C {x_trans + dx:.1f} {y_start}, {x_end - dx:.1f} {y_end}, {x_end} {y_end}"
+            )
+            fixed_x = (x_start + x_trans) / 2
+            fixed_y = y_start
+        return svg_path, fixed_x, fixed_y
+
+    # F3: Standard single cubic Bezier curve with clamped dx (CP1_x <= CP2_x)
+    dx = min(160.0, max(15.0, span * 0.35))
+    if span > 0 and dx > span * 0.45:
+        dx = span * 0.45
+    svg_path = f"M {x_start} {y_start} C {x_start + dx:.1f} {y_start}, {x_end - dx:.1f} {y_end}, {x_end} {y_end}"
+    return svg_path, None, None
 
 def generate(repo_path=None, max_count=None, output_path=None):
     global REPO_ROOT
@@ -82,11 +169,13 @@ def generate(repo_path=None, max_count=None, output_path=None):
                 head_branch = b_name
 
     # Check for detached HEAD or empty branch
-    head_rev = run_git(["rev-parse", "HEAD"]).strip()
-    sym_ref = run_git(["symbolic-ref", "-q", "--short", "HEAD"]).strip()
+    head_rev_raw = run_git(["rev-parse", "--verify", "HEAD"], check_err=False).strip()
+    head_rev = head_rev_raw.splitlines()[0].strip() if head_rev_raw else ""
+    sym_ref = run_git(["symbolic-ref", "-q", "--short", "HEAD", "--"], check_err=False).strip()
     if not sym_ref:
         head_branch = "DETACHED"
-        branches["DETACHED"] = {"hash": head_rev, "is_head": True}
+        if head_rev:
+            branches["DETACHED"] = {"hash": head_rev, "is_head": True}
     elif not head_branch or head_branch == "DETACHED":
         head_branch = sym_ref
 
@@ -100,13 +189,17 @@ def generate(repo_path=None, max_count=None, output_path=None):
         if len(parts) >= 2:
             tags.setdefault(parts[1].strip().lstrip("*"), []).append(parts[0].strip())
 
-    # 4. Commits
-    log_args = [
-        "log", "--branches", "--topo-order",
+    # 4. Commits (Include HEAD along with --branches so detached HEAD commits and active WIP are never dropped)
+    log_args = ["log", "--branches"]
+    if head_rev:
+        log_args.append("HEAD")
+    log_args.extend([
+        "--topo-order",
         "--format=%H|||%h|||%P|||%an|||%ae|||%aI|||%s|||%D###ENDRECORD###"
-    ]
+    ])
     if max_count is not None and max_count > 0:
         log_args.extend(["-n", str(max_count)])
+    log_args.append("--")
     log_raw = run_git(log_args)
 
     commits = {}
@@ -152,7 +245,8 @@ def generate(repo_path=None, max_count=None, output_path=None):
     if primary_branch not in branches and branches:
         primary_branch = list(branches.keys())[0]
 
-    primary_shas_raw = run_git(["rev-list", "--first-parent", primary_branch])
+    primary_ref = f"refs/heads/{primary_branch}" if (primary_branch in branches and not primary_branch.startswith("refs/")) else primary_branch
+    primary_shas_raw = run_git(["rev-list", "--first-parent", primary_ref, "--"])
     primary_shas = [s.strip() for s in primary_shas_raw.splitlines() if s.strip() and s.strip() in commits]
     primary_highway_ordered = list(reversed(primary_shas))
     primary_highway_shas = set(primary_shas)
@@ -168,9 +262,13 @@ def generate(repo_path=None, max_count=None, output_path=None):
         commit_lane_color[c] = "#06b6d4"
 
     # 6. Topological Ordering (Parents ALWAYS appear before Children on X-axis)
-    topo_args = ["log", "--branches", "--topo-order", "--reverse", "--format=%H"]
+    topo_args = ["log", "--branches"]
+    if head_rev:
+        topo_args.append("HEAD")
+    topo_args.extend(["--topo-order", "--reverse", "--format=%H"])
     if max_count is not None and max_count > 0:
         topo_args.extend(["-n", str(max_count)])
+    topo_args.append("--")
     topo_raw = run_git(topo_args)
     topo_order = [s.strip() for s in topo_raw.splitlines() if s.strip() and s.strip() in commits]
     for c in commits:
@@ -180,7 +278,20 @@ def generate(repo_path=None, max_count=None, output_path=None):
     topo_index = {c: i for i, c in enumerate(sorted_commits)}
 
     # 7. Collision-Free Dynamic Lane Allocation
-    head_refs = {data["hash"]: b_name for b_name, data in branches.items()}
+    # Multi-branch mapping: group all branch names per commit hash to prevent dict key overwrites
+    head_refs_all = {}
+    for b_name, data in branches.items():
+        head_refs_all.setdefault(data["hash"], []).append(b_name)
+
+    # Deterministic lookup resolution: head_branch > primary_branch > first branch
+    head_refs = {}
+    for b_hash, names in head_refs_all.items():
+        if head_branch in names:
+            head_refs[b_hash] = head_branch
+        elif primary_branch in names:
+            head_refs[b_hash] = primary_branch
+        else:
+            head_refs[b_hash] = names[0]
 
     def get_branch_commits_and_fork(tip_sha):
         branch_shas = []
@@ -232,11 +343,13 @@ def generate(repo_path=None, max_count=None, output_path=None):
                     })
 
     # Detect open / ongoing branches from refs/heads/
-    for b_hash, b_name in head_refs.items():
-        if b_name == primary_branch or b_name == "DETACHED":
+    for b_hash, names in head_refs_all.items():
+        active_names = [n for n in names if n != primary_branch and n != "DETACHED"]
+        if not active_names:
             continue
         if b_hash in assigned_shas:
             continue
+        b_name = active_names[0]
         b_shas, fork_sha = get_branch_commits_and_fork(b_hash)
         new_b_shas = [c for c in b_shas if c not in assigned_shas and c in topo_index]
         if new_b_shas:
@@ -459,23 +572,30 @@ def generate(repo_path=None, max_count=None, output_path=None):
             x_end = c_x
             y_end = c_y + (NODE_HEIGHT / 2)
 
-            if p_y == c_y:
-                svg_path = f"M {x_start} {y_start} L {x_end} {y_end}"
-            else:
-                dx = min(160, max(45, abs(x_end - x_start) * 0.35))
-                svg_path = f"M {x_start} {y_start} C {x_start + dx} {y_start}, {x_end - dx} {y_end}, {x_end} {y_end}"
+            svg_path, fixed_x, fixed_y = compute_cable_route(
+                x_start, y_start, p_lane,
+                x_end, y_end, c_lane,
+                x_spacing=X_SPACING
+            )
 
-            if p_lane != 0 and c_lane == 0:
+            # Resolve source branch name for attribution
+            p_branches = commits.get(p, {}).get("branches", [])
+            non_primary_branches = [b for b in p_branches if b != primary_branch and b != "DETACHED"]
+            if non_primary_branches:
+                p_display_name = non_primary_branches[0].replace("feature/", "")
+                edge_branch = non_primary_branches[0]
+            else:
+                p_display_name = commit_lane_name.get(p, "branch").replace("feature/", "")
+                edge_branch = commit_lane_name.get(p, "branch")
+            if not p_display_name or p_display_name == "branch":
+                p_display_name = p[:7]
+
+            is_merge_edge = (p_lane != 0 and c_lane == 0) or (c_data["is_merge"] and idx >= 1)
+
+            if is_merge_edge:
                 edge_type = "merge"
                 color = "#10b981"
-                label = f"MERGE TO {primary_branch.upper()}"
-                edge_branch = commit_lane_name.get(p, "branch")
-            elif c_data["is_merge"] and idx >= 1:
-                edge_type = "merge"
-                color = "#10b981"
-                p_name = commit_lane_name.get(p, "branch").replace("feature/", "")
-                label = f"MERGE: {p_name}"
-                edge_branch = commit_lane_name.get(p, "branch")
+                label = f"MERGE: {p_display_name}"
             elif p_lane == 0 and c_lane != 0:
                 edge_type = "branch_out"
                 color = commit_lane_color[c]
@@ -506,7 +626,7 @@ def generate(repo_path=None, max_count=None, output_path=None):
             edge_key = (p, c)
             if edge_key not in edge_set:
                 edge_set.add(edge_key)
-                edges.append({
+                edge_dict = {
                     "id": f"e-{p[:7]}-{c[:7]}",
                     "from": p,
                     "to": c,
@@ -516,7 +636,11 @@ def generate(repo_path=None, max_count=None, output_path=None):
                     "color": color,
                     "label": label,
                     "svg_path": svg_path
-                })
+                }
+                if fixed_x is not None and fixed_y is not None:
+                    edge_dict["fixed_x"] = fixed_x
+                    edge_dict["fixed_y"] = fixed_y
+                edges.append(edge_dict)
 
     # Primary Trunk continuation wire along Lane 0
     for i in range(len(primary_highway_ordered) - 1):
@@ -531,11 +655,11 @@ def generate(repo_path=None, max_count=None, output_path=None):
             y_start = p_y + (NODE_HEIGHT / 2)
             x_end = c_x
             y_end = c_y + (NODE_HEIGHT / 2)
-            if p_y == c_y:
-                svg_path = f"M {x_start} {y_start} L {x_end} {y_end}"
-            else:
-                dx = min(160, max(45, abs(x_end - x_start) * 0.35))
-                svg_path = f"M {x_start} {y_start} C {x_start + dx} {y_start}, {x_end - dx} {y_end}, {x_end} {y_end}"
+            svg_path, _, _ = compute_cable_route(
+                x_start, y_start, 0,
+                x_end, y_end, 0,
+                x_spacing=X_SPACING
+            )
             edges.append({
                 "id": f"trunk-{m_from[:7]}-{m_to[:7]}",
                 "from": m_from,
@@ -554,15 +678,15 @@ def generate(repo_path=None, max_count=None, output_path=None):
         if head_commit_sha in coords:
             h_x, h_y = coords[head_commit_sha]
             w_x, w_y = coords[active_wip_id]
-            if h_y == w_y:
-                svg_path = f"M {h_x + NODE_WIDTH} {h_y + (NODE_HEIGHT / 2)} L {w_x} {w_y + (NODE_HEIGHT / 2)}"
-            else:
-                x_start = h_x + NODE_WIDTH
-                y_start = h_y + (NODE_HEIGHT / 2)
-                x_end = w_x
-                y_end = w_y + (NODE_HEIGHT / 2)
-                dx = min(160, max(45, abs(x_end - x_start) * 0.35))
-                svg_path = f"M {x_start} {y_start} C {x_start + dx} {y_start}, {x_end - dx} {y_end}, {x_end} {y_end}"
+            x_start = h_x + NODE_WIDTH
+            y_start = h_y + (NODE_HEIGHT / 2)
+            x_end = w_x
+            y_end = w_y + (NODE_HEIGHT / 2)
+            svg_path, _, _ = compute_cable_route(
+                x_start, y_start, commit_lane.get(head_commit_sha, 0),
+                x_end, y_end, wip_lane,
+                x_spacing=WIP_SPACING
+            )
             edges.append({
                 "id": f"e-{active_wip_id}",
                 "from": head_commit_sha,
@@ -593,7 +717,7 @@ def generate(repo_path=None, max_count=None, output_path=None):
         if c in existing_diffs and c != "active-wip":
             diffs[c] = existing_diffs[c]
             continue
-        stat_raw = run_git(["diff-tree", "--root", "--no-commit-id", "--name-status", "-r", c])
+        stat_raw = run_git(["diff-tree", "--root", "--no-commit-id", "--name-status", "-r", c, "--"])
         files = []
         for line in stat_raw.strip().splitlines():
             if not line:
@@ -601,7 +725,7 @@ def generate(repo_path=None, max_count=None, output_path=None):
             parts = line.split("\t")
             files.append({"status": parts[0].strip(), "path": parts[1].strip() if len(parts) > 1 else ""})
 
-        full_diff = run_git(["show", "--stat", "--patch", "--format=fuller", c])
+        full_diff = run_git(["show", "--stat", "--patch", "--format=fuller", c, "--"])
         diffs[c] = {
             "files": files,
             "full_output": full_diff[:100000]
@@ -615,7 +739,7 @@ def generate(repo_path=None, max_count=None, output_path=None):
             filepath = line[2:].strip()
             wip_files.append({"status": status_code, "path": filepath})
 
-        raw_diff = run_git(["diff", "HEAD"])
+        raw_diff = run_git(["diff", "HEAD", "--"])
         untracked = [l[2:].strip() for l in dirty_lines if l.startswith("??")]
         untracked_block = ""
         if untracked:
@@ -629,7 +753,8 @@ def generate(repo_path=None, max_count=None, output_path=None):
     all_lanes = all_assigned_lanes
     total_lanes = (max(all_lanes) - min(all_lanes) + 1) if all_lanes else 8
 
-    merged_to_primary_raw = run_git(["branch", "--merged", primary_branch])
+    primary_ref = f"refs/heads/{primary_branch}" if (primary_branch in branches and not primary_branch.startswith("refs/")) else primary_branch
+    merged_to_primary_raw = run_git(["branch", "--merged", primary_ref, "--"])
     merged_to_primary = set([b.strip().lstrip("*+").strip() for b in merged_to_primary_raw.splitlines() if b.strip()])
 
     bundle = {
@@ -668,10 +793,7 @@ def generate(repo_path=None, max_count=None, output_path=None):
 
     js_content = f"/* Auto-generated Git DAG Data */\nwindow.GIT_DAG_DATA = {json.dumps(bundle, ensure_ascii=False, indent=2)};\n"
     target_output = os.path.abspath(output_path) if output_path else OUTPUT_JS
-    tmp_output = target_output + ".tmp"
-    with open(tmp_output, "w", encoding="utf-8") as f:
-        f.write(js_content)
-    os.replace(tmp_output, target_output)
+    write_atomic_file(target_output, js_content, encoding="utf-8")
 
     print(f"Successfully generated {os.path.basename(target_output)} for repository '{os.path.basename(REPO_ROOT)}' ({len(nodes)} commits, {len(edges)} edges, {len(branches)} branches) at {datetime.now().strftime('%H:%M:%S')}")
 

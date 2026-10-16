@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+tests/__pycache__/
 *.pyc
 *.py[cod]
 *$py.class
@@ -16,3 +17,9 @@ ehthumbs.db
 *.tmp
 git_data.js
 *.local*.js
+
+# Test outputs and temporary artifacts
+test_output*.js
+test_*.js
+test_m2*.js
+git_data*.json

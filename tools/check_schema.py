@@ -4,7 +4,7 @@
 Schema Validator for n8n-git-ui DAG Data Files (git_data.js / demo_data.js)
 
 Validates the window.GIT_DAG_DATA payload structure, field types, coordinates,
-and relational integrity without external dependencies.
+pairwise collision freedom (F16), and relational integrity without external dependencies.
 """
 
 import os
@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple, Set
 
 class SchemaValidationError:
     def __init__(self, category: str, message: str, item_id: Optional[str] = None):
-        self.category = category  # 'MISSING_KEY', 'TYPE_MISMATCH', 'INVALID_COORD', 'INTEGRITY'
+        self.category = category  # 'MISSING_KEY', 'TYPE_MISMATCH', 'INVALID_COORD', 'INTEGRITY', 'COLLISION_ERROR'
         self.message = message
         self.item_id = item_id
 
@@ -28,14 +28,18 @@ class SchemaValidationError:
 
 
 class ValidationReport:
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, strict: bool = False):
         self.file_path = file_path
+        self.strict = strict
         self.repo: str = "Unknown"
         self.head_branch: str = "Unknown"
+        self.primary_branch: str = "Unknown"
+        self.head_commit: Optional[str] = None
         self.schema_version: str = "1 (legacy/unspecified)"
         self.node_count: int = 0
         self.edge_count: int = 0
         self.branch_count: int = 0
+        self.collision_count: int = 0
         self.is_dirty: bool = False
         self.dirty_count: int = 0
         self.errors: List[SchemaValidationError] = []
@@ -43,6 +47,9 @@ class ValidationReport:
 
     @property
     def is_valid(self) -> bool:
+        if self.strict:
+            has_relational_warning = any("integrity" in w.lower() or "relational" in w.lower() for w in self.warnings)
+            return len(self.errors) == 0 and not has_relational_warning
         return len(self.errors) == 0
 
     def add_error(self, category: str, message: str, item_id: Optional[str] = None):
@@ -104,13 +111,54 @@ def validate_schema(data: dict, file_path: str, strict: bool = False) -> Validat
     """
     Perform complete schema validation on parsed GIT_DAG_DATA dictionary.
     """
-    report = ValidationReport(file_path)
+    report = ValidationReport(file_path, strict=strict)
 
     # 1. Top-Level Fields Validation
     report.repo = str(data.get("repo", "Unknown"))
     report.head_branch = str(data.get("head_branch", "Unknown"))
-    if "schema_version" in data:
+
+    # 'schema_version'
+    if "schema_version" not in data:
+        if strict:
+            report.add_error("MISSING_KEY", "Strict mode requires top-level key: 'schema_version'")
+        else:
+            report.add_warning("Missing top-level 'schema_version' (legacy or unversioned payload)")
+    elif data["schema_version"] != 2:
+        if strict:
+            report.add_error("TYPE_MISMATCH", f"Strict mode requires 'schema_version' == 2, got {data['schema_version']!r}")
+        else:
+            report.add_warning(f"Expected 'schema_version' == 2, got {data['schema_version']!r}")
+    else:
         report.schema_version = str(data["schema_version"])
+
+    # 'primary_branch'
+    if "primary_branch" not in data:
+        if strict:
+            report.add_error("MISSING_KEY", "Strict mode requires top-level key: 'primary_branch'")
+        else:
+            report.add_warning("Missing top-level 'primary_branch'")
+    elif not isinstance(data["primary_branch"], str) or not data["primary_branch"].strip():
+        if strict:
+            report.add_error("TYPE_MISMATCH", f"Top-level 'primary_branch' must be a non-empty string, got {type(data['primary_branch']).__name__}")
+        else:
+            report.add_warning(f"Top-level 'primary_branch' should be a non-empty string, got {data.get('primary_branch')!r}")
+    else:
+        report.primary_branch = data["primary_branch"]
+
+    # 'head_commit'
+    head_commit = data.get("head_commit")
+    if "head_commit" not in data:
+        if strict:
+            report.add_error("MISSING_KEY", "Strict mode requires top-level key: 'head_commit'")
+        else:
+            report.add_warning("Missing top-level 'head_commit'")
+    elif not isinstance(head_commit, str) or not head_commit.strip():
+        if strict:
+            report.add_error("TYPE_MISMATCH", f"Top-level 'head_commit' must be a non-empty string, got {type(head_commit).__name__}")
+        else:
+            report.add_warning(f"Top-level 'head_commit' must be a non-empty string, got {head_commit!r}")
+    else:
+        report.head_commit = head_commit
 
     # 'repo' (str)
     if "repo" not in data:
@@ -196,7 +244,7 @@ def validate_schema(data: dict, file_path: str, strict: bool = False) -> Validat
 
         nid = node.get("id")
         if nid is None or not isinstance(nid, str) or not nid.strip():
-            report.add_error("MISSING_KEY", f"Missing or invalid required key 'id' (must be non-empty str)", node_ref)
+            report.add_error("MISSING_KEY", "Missing or invalid required key 'id' (must be non-empty str)", node_ref)
             node_id_str = f"node-{idx}"
         else:
             node_id_str = str(nid)
@@ -295,7 +343,6 @@ def validate_schema(data: dict, file_path: str, strict: bool = False) -> Validat
             if not isinstance(node["is_wip"], bool):
                 report.add_error("TYPE_MISMATCH", f"'is_wip' must be bool, got {type(node['is_wip']).__name__}", node_id_str)
         else:
-            # Check if this node is clearly a WIP node
             is_wip_node = (node.get("status") == "wip" or node_id_str == "active-wip" or node_id_str == "working-directory-wip")
             if is_wip_node:
                 report.add_error("MISSING_KEY", "WIP node must explicitly declare 'is_wip': True", node_id_str)
@@ -305,7 +352,39 @@ def validate_schema(data: dict, file_path: str, strict: bool = False) -> Validat
     if head_node_count == 0 and len(nodes) > 0:
         report.add_warning("No node in the graph is marked with 'is_head': True")
 
-    # 3. Edges Validation
+    # 3. Pairwise Node Bounding Box Collision Detection (F16)
+    # Check all pairs a != b: if abs(a.x - b.x) < 300 and abs(a.y - b.y) < 88, record COLLISION_ERROR
+    collision_count = 0
+    for i in range(len(nodes)):
+        a = nodes[i]
+        if not isinstance(a, dict):
+            continue
+        ax, ay = a.get("x"), a.get("y")
+        if not (_is_valid_number(ax) and _is_valid_number(ay)):
+            continue
+        aid = str(a.get("id", f"node-{i}"))
+
+        for j in range(i + 1, len(nodes)):
+            b = nodes[j]
+            if not isinstance(b, dict):
+                continue
+            bx, by = b.get("x"), b.get("y")
+            if not (_is_valid_number(bx) and _is_valid_number(by)):
+                continue
+            bid = str(b.get("id", f"node-{j}"))
+
+            dx = abs(ax - bx)
+            dy = abs(ay - by)
+            if dx < 300 and dy < 88:
+                collision_count += 1
+                report.add_error(
+                    "COLLISION_ERROR",
+                    f"Bounding box collision between node '{aid}' (x={ax}, y={ay}) and node '{bid}' (x={bx}, y={by}): dx={dx} (<300), dy={dy} (<88)",
+                    aid
+                )
+    report.collision_count = collision_count
+
+    # 4. Edges Validation & Endpoint Relational Integrity
     for idx, edge in enumerate(edges):
         edge_ref = f"edges[{idx}]"
         if not isinstance(edge, dict):
@@ -321,7 +400,11 @@ def validate_schema(data: dict, file_path: str, strict: bool = False) -> Validat
         elif not isinstance(efrom, str) or not efrom.strip():
             report.add_error("TYPE_MISMATCH", f"'from' must be non-empty str, got {type(efrom).__name__}", edge_id)
         elif efrom not in node_ids:
-            report.add_warning(f"Edge '{edge_id}': 'from' node '{efrom}' does not exist in nodes list")
+            msg = f"Edge '{edge_id}': 'from' node '{efrom}' does not exist in nodes list"
+            if strict:
+                report.add_error("INTEGRITY", msg, edge_id)
+            else:
+                report.add_warning(f"[INTEGRITY] {msg}")
 
         # 'to' (str)
         eto = edge.get("to")
@@ -330,7 +413,11 @@ def validate_schema(data: dict, file_path: str, strict: bool = False) -> Validat
         elif not isinstance(eto, str) or not eto.strip():
             report.add_error("TYPE_MISMATCH", f"'to' must be non-empty str, got {type(eto).__name__}", edge_id)
         elif eto not in node_ids:
-            report.add_warning(f"Edge '{edge_id}': 'to' node '{eto}' does not exist in nodes list")
+            msg = f"Edge '{edge_id}': 'to' node '{eto}' does not exist in nodes list"
+            if strict:
+                report.add_error("INTEGRITY", msg, edge_id)
+            else:
+                report.add_warning(f"[INTEGRITY] {msg}")
 
         # 'svg_path' (str)
         svg_path = edge.get("svg_path")
@@ -346,6 +433,63 @@ def validate_schema(data: dict, file_path: str, strict: bool = False) -> Validat
         elif not isinstance(color, str) or not color.strip():
             report.add_error("TYPE_MISMATCH", f"'color' must be non-empty str, got {type(color).__name__}", edge_id)
 
+    # 5. Graph-Level Relational Integrity Checks
+    # 5.1 Verify head_commit exists in node_ids
+    if report.head_commit and report.head_commit not in node_ids:
+        msg = f"Top-level 'head_commit' ('{report.head_commit}') does not exist in nodes list"
+        if strict:
+            report.add_error("INTEGRITY", msg, report.head_commit)
+        else:
+            report.add_warning(f"[INTEGRITY] {msg}")
+
+    # 5.2 Verify Dirty Working Tree & WIP Node / Connecting Edge
+    if report.is_dirty:
+        wip_nodes = [
+            n for n in nodes
+            if isinstance(n, dict) and n.get("is_wip") is True
+        ]
+        if not wip_nodes:
+            msg = "Working tree is dirty ('status.is_dirty': True), but no node has 'is_wip': True"
+            if strict:
+                report.add_error("INTEGRITY", msg)
+            else:
+                report.add_warning(f"[INTEGRITY] {msg}")
+        elif not any(n.get("id") == "active-wip" for n in wip_nodes):
+            msg = "Working tree is dirty ('status.is_dirty': True), but no active-wip node exists with 'is_wip': True"
+            if strict:
+                report.add_error("INTEGRITY", msg, "active-wip")
+            else:
+                report.add_warning(f"[INTEGRITY] {msg}")
+        else:
+            wip_ids = {n.get("id") for n in wip_nodes if n.get("id")}
+            if report.head_commit and report.head_commit in node_ids:
+                wip_connected = any(
+                    isinstance(e, dict) and (
+                        (e.get("from") in wip_ids and e.get("to") == report.head_commit) or
+                        (e.get("from") == report.head_commit and e.get("to") in wip_ids)
+                    )
+                    for e in edges
+                )
+                if not wip_connected:
+                    wip_sample_id = next(iter(wip_ids)) if wip_ids else "active-wip"
+                    msg = f"Working tree is dirty ('status.is_dirty': True), but no edge connects WIP node '{wip_sample_id}' to head_commit '{report.head_commit}'"
+                    if strict:
+                        report.add_error("INTEGRITY", msg, wip_sample_id)
+                    else:
+                        report.add_warning(f"[INTEGRITY] {msg}")
+    else:
+        # Clean working tree: verify no unexpected WIP nodes
+        wip_nodes = [
+            n for n in nodes
+            if isinstance(n, dict) and n.get("is_wip") is True
+        ]
+        if wip_nodes:
+            msg = f"Working tree is clean ('status.is_dirty': False), but graph contains WIP node(s): {[n.get('id') for n in wip_nodes]}"
+            if strict:
+                report.add_error("INTEGRITY", msg)
+            else:
+                report.add_warning(f"[INTEGRITY] {msg}")
+
     return report
 
 
@@ -360,13 +504,16 @@ def print_report(report: ValidationReport, verbose: bool = False):
     print(border)
     print(f"  Target File:     {report.file_path}")
     print(f"  Repository:      {report.repo}")
+    print(f"  Primary Branch:  {report.primary_branch}")
     print(f"  Head Branch:     {report.head_branch}")
+    print(f"  Head Commit:     {report.head_commit or 'None'}")
     print(f"  Schema Version:  {report.schema_version}")
     print(subborder)
     print("SUMMARY COUNTS:")
     print(f"  Nodes:           {report.node_count}")
     print(f"  Edges:           {report.edge_count}")
     print(f"  Branches:        {report.branch_count}")
+    print(f"  Collisions:      {report.collision_count}")
     print(f"  Working Tree:    {'DIRTY (' + str(report.dirty_count) + ' changes)' if report.is_dirty else 'CLEAN'}")
     print(subborder)
 
@@ -381,6 +528,8 @@ def print_report(report: ValidationReport, verbose: bool = False):
         print(f"[OK] All {report.node_count} nodes validated: PASSED")
         print(f"[OK] All {report.edge_count} edges validated: PASSED")
         print(f"[OK] Coordinates and dimensions: PASSED")
+        print(f"[OK] Pairwise node collision check (300x88): PASSED (0 collisions)")
+        print(f"[OK] Relational integrity (head_commit, WIP edges, endpoints): PASSED")
         print(border)
         print("RESULT: SUCCESS (0 errors) - Schema is 100% compliant")
         print(border)
@@ -418,7 +567,7 @@ def main():
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="Enforce strict schema checking (e.g., explicit is_wip on all nodes)."
+        help="Enforce strict schema checking (requires schema_version 2, primary_branch, pairwise collision freedom, and full relational integrity)."
     )
     parser.add_argument(
         "--verbose", "-v",
@@ -436,7 +585,6 @@ def main():
 
     files_to_check = args.files
     if not files_to_check:
-        # Default lookup
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         demo_candidate = os.path.join(repo_root, "demo_data.js")
         git_candidate = os.path.join(repo_root, "git_data.js")
@@ -446,7 +594,6 @@ def main():
         elif os.path.exists(git_candidate):
             files_to_check = [git_candidate]
         else:
-            # Check current working directory
             if os.path.exists("demo_data.js"):
                 files_to_check = ["demo_data.js"]
             elif os.path.exists("git_data.js"):
@@ -461,7 +608,7 @@ def main():
     for file_path in files_to_check:
         data, err = parse_git_dag_js(file_path)
         if err:
-            report = ValidationReport(file_path)
+            report = ValidationReport(file_path, strict=args.strict)
             report.add_error("SYNTAX_ERROR", err)
             reports.append(report)
             all_passed = False
@@ -484,12 +631,15 @@ def main():
                 {
                     "file_path": r.file_path,
                     "repo": r.repo,
+                    "primary_branch": r.primary_branch,
                     "head_branch": r.head_branch,
+                    "head_commit": r.head_commit,
                     "schema_version": r.schema_version,
                     "is_valid": r.is_valid,
                     "node_count": r.node_count,
                     "edge_count": r.edge_count,
                     "branch_count": r.branch_count,
+                    "collision_count": r.collision_count,
                     "is_dirty": r.is_dirty,
                     "dirty_count": r.dirty_count,
                     "errors": [str(e) for e in r.errors],

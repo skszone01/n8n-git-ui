@@ -1374,18 +1374,18 @@
       <div class="git-version-badge-group">
         <div class="git-version-pulse"></div>
         <span class="git-version-badge" id="hud-ver-badge">NEW UPDATE</span>
-        <span class="git-version-tag">v1.0.6</span>
+        <span class="git-version-tag">v1.0.7</span>
       </div>
       <button type="button" class="git-version-close" id="hud-ver-close" title="Close / ปิด">✕</button>
     </div>
-    <div class="git-version-title" id="hud-ver-title">n8n Git UI v1.0.6 Available!</div>
+    <div class="git-version-title" id="hud-ver-title">n8n Git UI v1.0.7 Available!</div>
     <div class="git-version-desc" id="hud-ver-desc">
-      Added collision-free WIP node lane & X-slot allocation, sub-branch label detection, and diff caching optimizations.
+      Added channel-aware wire routing, DOM XSS & subprocess hardening, 6-layer data-leak guard, and 94 automated regression tests.
     </div>
     <div class="git-version-diff">
-      <span id="hud-cur-label">Current: <strong style="color:#94a3b8;">v1.0.5</strong></span>
+      <span id="hud-cur-label">Current: <strong style="color:#94a3b8;">v1.0.6</strong></span>
       <span>→</span>
-      <span id="hud-latest-label">Latest: <strong class="highlight">v1.0.6</strong></span>
+      <span id="hud-latest-label">Latest: <strong class="highlight">v1.0.7</strong></span>
     </div>
     <div class="git-version-actions">
       <a href="https://github.com/skszone01/n8n-git-ui" target="_blank" class="git-version-btn primary" id="hud-btn-download">Update n8n UI</a>
@@ -1425,7 +1425,7 @@
     // =========================================================================
     // Multi-Language (ENG / TH) & Version Checker Integration
     // =========================================================================
-    const CURRENT_APP_VERSION = "v1.0.6";
+    const CURRENT_APP_VERSION = "v1.0.7";
     let latestDetectedTag = null;
 
     const I18N_DICT = {
@@ -1454,8 +1454,8 @@
         drawer_expand_off: "Wide: Off",
         drawer_close: "Close Drawer",
         version_new: "NEW UPDATE",
-        version_title: "n8n Git UI v1.0.6 Available!",
-        version_desc: "Added collision-free WIP node lane & X-slot allocation, sub-branch label detection, and diff caching optimizations.",
+        version_title: "n8n Git UI v1.0.7 Available!",
+        version_desc: "Added channel-aware wire routing, DOM XSS & subprocess hardening, 6-layer data-leak guard, and 94 automated regression tests.",
         version_cur: "Current",
         version_latest: "Latest",
         version_update_btn: "Update n8n UI",
@@ -1487,8 +1487,8 @@
         drawer_expand_off: "ขยายกว้าง: ปิด",
         drawer_close: "ปิดแถบข้าง",
         version_new: "อัปเดตใหม่",
-        version_title: "มีอัปเดต n8n Git UI v1.0.6!",
-        version_desc: "แก้ไขโหนด WIP ซ้อนทับกิ่งอื่นด้วยการจัดสรร Lane และช่องแกน X อัตโนมัติ พร้อมแคช Diff ความเร็วสูง",
+        version_title: "มีอัปเดต n8n Git UI v1.0.7!",
+        version_desc: "เดินสายไฟหลบการ์ดโหนด ปิดช่องโหว่ DOM XSS และ Git Subprocess พร้อมชุดทดสอบอัตโนมัติ 94 เคส",
         version_cur: "ปัจจุบัน",
         version_latest: "ล่าสุด",
         version_update_btn: "อัปเดต n8n UI",
@@ -1498,6 +1498,20 @@
     };
 
     let currentLang = localStorage.getItem("git_dag_lang") || "en";
+
+    function setVersionHudLabel(el, labelText, valueText, isHighlight) {
+      if (!el) return;
+      el.replaceChildren();
+      el.appendChild(document.createTextNode(`${labelText}: `));
+      const strong = document.createElement('strong');
+      if (isHighlight) {
+        strong.className = 'highlight';
+      } else {
+        strong.style.color = '#94a3b8';
+      }
+      strong.textContent = valueText;
+      el.appendChild(strong);
+    }
 
     function applyLanguage(lang) {
       currentLang = lang;
@@ -1570,9 +1584,9 @@
       const verDesc = document.getElementById("hud-ver-desc");
       if (verDesc) verDesc.textContent = dict.version_desc;
       const verCur = document.getElementById("hud-cur-label");
-      if (verCur) verCur.innerHTML = `${dict.version_cur}: <strong style="color:#94a3b8;">${CURRENT_APP_VERSION}</strong>`;
+      setVersionHudLabel(verCur, dict.version_cur, CURRENT_APP_VERSION, false);
       const verLatest = document.getElementById("hud-latest-label");
-      if (verLatest) verLatest.innerHTML = `${dict.version_latest}: <strong class="highlight">${latestDetectedTag || CURRENT_APP_VERSION}</strong>`;
+      setVersionHudLabel(verLatest, dict.version_latest, latestDetectedTag || CURRENT_APP_VERSION, true);
       const verDl = document.getElementById("hud-btn-download");
       if (verDl) {
         verDl.textContent = dict.version_update_btn;
@@ -1637,50 +1651,15 @@
       return false;
     }
 
-    // Dynamic GitHub version check (skszone01/n8n-git-ui)
-    // Only alerts the user when a release strictly newer than CURRENT_APP_VERSION exists on GitHub.
-    async function checkGitHubVersion() {
-      try {
-        const repo = 'skszone01/n8n-git-ui';
-        const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, { cache: 'no-cache' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.tag_name) {
-            const latestTag = data.tag_name;
-            latestDetectedTag = latestTag;
-
-            // Only show alert if GitHub has a strictly newer version
-            if (isNewerVersion(latestTag, CURRENT_APP_VERSION)) {
-              const dismissed = localStorage.getItem("git_dag_version_dismissed");
-              if (dismissed === latestTag) return;
-
-              const latestLabel = document.getElementById("hud-latest-label");
-              if (latestLabel) latestLabel.innerHTML = `${(I18N_DICT[currentLang] || I18N_DICT.en).version_latest}: <strong class="highlight">${latestTag}</strong>`;
-              const curLabel = document.getElementById("hud-cur-label");
-              if (curLabel) curLabel.innerHTML = `${(I18N_DICT[currentLang] || I18N_DICT.en).version_cur}: <strong style="color:#94a3b8;">${CURRENT_APP_VERSION}</strong>`;
-              const verTag = document.querySelector(".git-version-tag");
-              if (verTag) verTag.textContent = latestTag;
-              const verTitle = document.getElementById("hud-ver-title");
-              if (verTitle) verTitle.textContent = currentLang === "th" ? `มีอัปเดต n8n Git UI ${latestTag}!` : `n8n Git UI ${latestTag} Available!`;
-              if (data.body) {
-                const verDesc = document.getElementById("hud-ver-desc");
-                if (verDesc) verDesc.textContent = data.body.substring(0, 160) + (data.body.length > 160 ? "..." : "");
-              }
-
-              // Reveal notification card
-              if (hudEl) {
-                hudEl.classList.remove("hidden");
-                hudEl.style.opacity = "1";
-                hudEl.style.transform = "translateY(0)";
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("GitHub version check:", e);
-      }
+    // Dynamic GitHub version check (Disabled in offline self-contained mode, Feature F10)
+    async function checkGitHubVersion(options = {}) {
+      // Offline self-containment: zero external network calls
+      const latestTag = latestDetectedTag || CURRENT_APP_VERSION;
+      const latestLabel = document.getElementById("hud-latest-label");
+      setVersionHudLabel(latestLabel, (I18N_DICT[currentLang] || I18N_DICT.en).version_latest, latestTag, true);
+      const curLabel = document.getElementById("hud-cur-label");
+      setVersionHudLabel(curLabel, (I18N_DICT[currentLang] || I18N_DICT.en).version_cur, CURRENT_APP_VERSION, false);
     }
-    checkGitHubVersion();
 
     // Update viewport transform with crisp integer-pixel translation
     function updateTransform() {
@@ -1823,6 +1802,7 @@
         .replace(/^branch:\s*/i, '')
         .replace(/^merge:\s*/i, '')
         .replace(/\s*\(main trunk\)$/i, '')
+        .replace(/\s*\(สายหลัก\)$/i, '')
         .replace(/\s*trunk$/i, '')
         .replace(/\s*\(wip\)$/i, '');
     }
@@ -1832,7 +1812,7 @@
       if (edge.label) {
         if (/^BRANCH:/i.test(edge.label)) return edge.label.replace(/^BRANCH:\s*/i, '').trim();
         if (/^MERGE:/i.test(edge.label)) return edge.label.replace(/^MERGE:\s*/i, '').trim();
-        if (/MAIN|MASTER|TRUNK/i.test(edge.label)) return 'main';
+        if (/MAIN|MASTER|TRUNK|สายหลัก/i.test(edge.label)) return 'main';
         if (/UNCOMMITTED/i.test(edge.label)) {
           const wipNode = state.dagData && state.dagData.nodes && state.dagData.nodes.find(n => n.id === 'active-wip' || n.id === 'working-directory-wip');
           if (wipNode && wipNode.branches && wipNode.branches.length) return wipNode.branches[0];
@@ -1969,9 +1949,9 @@
 
     // Render Canvas Nodes and Bezier Connections
     function renderGraph(data) {
-      nodesLayer.innerHTML = '';
-      cablesGroup.innerHTML = '';
-      pillsGroup.innerHTML = '';
+      nodesLayer.replaceChildren();
+      cablesGroup.replaceChildren();
+      pillsGroup.replaceChildren();
       placedPills = [];
 
       const query = (searchInput.value || '').toLowerCase().trim();
@@ -2022,10 +2002,16 @@
         btnMergeText.textContent = (currentLang === 'th' ? `จำลองรวมเข้า ${primary.toUpperCase()}` : `Merge to ${primary.toUpperCase()}`);
       }
 
-      if (masterTip) {
-        const x1 = masterTip.x + masterTip.width;
-        const y1 = masterTip.y + masterTip.height / 2;
-        const allX = data.nodes.map(n => n.x + n.width);
+      // Find the rightmost entity on Lane 0 (including active-wip or any uncommitted WIP node on Lane 0)
+      const lane0Nodes = (data.nodes || []).filter(n => n.lane === 0);
+      const rightmostLane0 = lane0Nodes.length > 0
+        ? lane0Nodes.reduce((max, n) => (n.x > max.x ? n : max), lane0Nodes[0])
+        : masterTip;
+
+      if (rightmostLane0) {
+        const x1 = rightmostLane0.x + (rightmostLane0.width || 300);
+        const y1 = rightmostLane0.y + (rightmostLane0.height || 88) / 2;
+        const allX = data.nodes.map(n => n.x + (n.width || 300));
         const maxNodeX = Math.max(...allX);
         const labelText = currentLang === 'th' ? `${primary.toUpperCase()} (สายหลัก)` : `${primary.toUpperCase()} (MAIN TRUNK)`;
         const pillW = Math.max(labelText.length * 7.5 + 24, 150);
@@ -2046,7 +2032,7 @@
         extPathEl.addEventListener('mouseleave', clearBranchHighlight);
         cablesGroup.appendChild(extPathEl);
 
-        // Position pill at least 42px away from the right edge of masterTip node card
+        // Position pill at least 42px away from the right edge of rightmost Lane 0 node card
         const pillX = Math.max(x1 + 42 + pillW / 2, (x1 + x2) / 2);
         renderCablePill({
           svg_path: extPath,
@@ -2123,21 +2109,21 @@
 
         const iconBox = document.createElement('div');
         iconBox.className = 'node-icon-box';
-        iconBox.innerHTML = getNodeIcon(node);
+        iconBox.appendChild(getNodeIcon(node));
 
         const statusBadge = document.createElement('div');
         if (isWip) {
           statusBadge.className = 'node-status-badge status-wip';
-          statusBadge.innerHTML = '✎';
+          statusBadge.textContent = '✎';
         } else if (isHead) {
           statusBadge.className = 'node-status-badge status-check';
-          statusBadge.innerHTML = '✓';
+          statusBadge.textContent = '✓';
         } else if (isMerge) {
           statusBadge.className = 'node-status-badge status-merge';
-          statusBadge.innerHTML = '☊';
+          statusBadge.textContent = '☊';
         } else {
           statusBadge.className = 'node-status-badge status-check';
-          statusBadge.innerHTML = '✓';
+          statusBadge.textContent = '✓';
         }
         iconBox.appendChild(statusBadge);
 
@@ -2152,12 +2138,20 @@
         const subEl = document.createElement('div');
         subEl.className = 'node-subtitle';
         if (isWip) {
-          subEl.innerHTML = currentLang === 'th'
-            ? `<span style="color:#fbbf24;font-weight:700;">● ยังไม่คอมมิต</span> • <span>ไฟล์ในเครื่อง</span>`
-            : `<span style="color:#fbbf24;font-weight:700;">● UNCOMMITTED</span> • <span>Working Tree</span>`;
+          subEl.replaceChildren();
+          const dotSpan = document.createElement('span');
+          dotSpan.style.color = '#fbbf24';
+          dotSpan.style.fontWeight = '700';
+          dotSpan.textContent = currentLang === 'th' ? '● ยังไม่คอมมิต' : '● UNCOMMITTED';
+          const sepText = document.createTextNode(' • ');
+          const placeSpan = document.createElement('span');
+          placeSpan.textContent = currentLang === 'th' ? 'ไฟล์ในเครื่อง' : 'Working Tree';
+          subEl.appendChild(dotSpan);
+          subEl.appendChild(sepText);
+          subEl.appendChild(placeSpan);
           subEl.title = currentLang === 'th' ? `การเปลี่ยนแปลงในเครื่องที่ยังไม่คอมมิต (${displayTitle})` : `Local uncommitted changes (${rawTitle})`;
         } else {
-          subEl.innerHTML = '';
+          subEl.replaceChildren();
           const idSpan = document.createElement('span');
           idSpan.textContent = `#${shortId}`;
           const dotText = document.createTextNode(' • ');
@@ -2168,7 +2162,7 @@
           subEl.appendChild(dateSpan);
           subEl.title = currentLang === 'th'
             ? `คอมมิต #${shortId} โดย ${author} (${formatDate(node.date)})`
-            : `Commit #${shortId} by ${author} (${node.date || ''})`;
+            : `Commit #${shortId} by ${author} (${formatDate(node.date)})`;
         }
 
         const branchBox = document.createElement('div');
@@ -2290,13 +2284,21 @@
       // 2. Primary Trunk Forward Extension along Lane 0
       const primary = (state.dagData && state.dagData.primary_branch) || (state.dagData && state.dagData.nodes && state.dagData.nodes.some(n => n.branches && n.branches.includes('main')) ? 'main' : 'master');
       const masterTip = state.dagData && state.dagData.nodes && state.dagData.nodes.find(n => n.branches && (n.branches.includes(primary) || n.branches.includes('master') || n.branches.includes('main')));
-      if (masterTip && state.dagData.nodes && state.dagData.nodes.length) {
-        const x1 = masterTip.x + masterTip.width;
-        const y1 = masterTip.y + masterTip.height / 2;
-        const allX = state.dagData.nodes.map(n => n.x + n.width);
-        const x2 = Math.max(...allX) + 80;
-        if (x2 > x1 + 20) {
-          segments.push({ y: y1, minX: x1, maxX: x2, color: '#06b6d4' });
+      if (state.dagData && state.dagData.nodes && state.dagData.nodes.length) {
+        const lane0Nodes = state.dagData.nodes.filter(n => n.lane === 0);
+        const rightmostLane0 = lane0Nodes.length > 0 
+          ? lane0Nodes.reduce((max, n) => (n.x > max.x ? n : max), lane0Nodes[0])
+          : masterTip;
+        if (rightmostLane0) {
+          const x1 = rightmostLane0.x + (rightmostLane0.width || 300);
+          const y1 = rightmostLane0.y + (rightmostLane0.height || 88) / 2;
+          const allX = state.dagData.nodes.map(n => n.x + (n.width || 300));
+          const maxNodeX = Math.max(...allX);
+          const minExtensionLength = 330;
+          const x2 = Math.max(maxNodeX + 220, x1 + minExtensionLength);
+          if (x2 > x1 + 20) {
+            segments.push({ y: y1, minX: x1, maxX: x2, color: '#06b6d4' });
+          }
         }
       }
 
@@ -2456,35 +2458,46 @@
       const edgeBranch = getEdgeBranch(edge);
 
       points.forEach(mid => {
-        // Final sanity clearance check against all horizontal wires
-        const sanityWire = findCollidingHorizontalWire(mid.x, mid.y, pillWidth, edge);
-        if (sanityWire) {
-          mid.y += (mid.y <= sanityWire.y) ? -CLEARANCE : CLEARANCE;
-        }
+        // Iterative relaxation solver (up to 8 iterations) to satisfy wire, card, and pill clearance
+        let candidateY = mid.y;
+        for (let iter = 0; iter < 8; iter++) {
+          let adjusted = false;
 
-        // Final sanity clearance check against all node cards to ensure no card covers this pill
-        const hitNode = findCollidingNodeCard(mid.x, mid.y, pillWidth, 24);
-        if (hitNode) {
-          // Float cleanly above the card rather than pushing horizontally into the card!
-          mid.y = hitNode.y - 18;
-        }
+          // 1. Avoid colliding horizontal wires
+          const sanityWire = findCollidingHorizontalWire(mid.x, candidateY, pillWidth, edge);
+          if (sanityWire) {
+            candidateY += (candidateY <= sanityWire.y) ? -CLEARANCE : CLEARANCE;
+            adjusted = true;
+          }
 
-        // Pill-vs-Pill collision avoidance: prevent any two pills from overlapping
-        for (let attempt = 0; attempt < 5; attempt++) {
+          // 2. Avoid node cards: float cleanly above or below the card (>= 20px outside card bounds)
+          const hitNode = findCollidingNodeCard(mid.x, candidateY, pillWidth, 24);
+          if (hitNode) {
+            const cardCenterY = hitNode.y + (hitNode.height || 88) / 2;
+            candidateY = (candidateY <= cardCenterY) ? (hitNode.y - 20) : (hitNode.y + (hitNode.height || 88) + 20);
+            adjusted = true;
+          }
+
+          // 3. Pill-vs-Pill collision avoidance: prevent any two pills from overlapping
           const collidesWithPill = placedPills.find(p => 
             Math.abs(p.x - mid.x) < (p.width + pillWidth) / 2 + 10 &&
-            Math.abs(p.y - mid.y) < 22
+            Math.abs(p.y - candidateY) < 22
           );
           if (collidesWithPill) {
-            if (mid.y >= collidesWithPill.y) {
-              mid.y = collidesWithPill.y + 26;
-            } else {
-              mid.y = collidesWithPill.y - 26;
+            let nextY = (candidateY <= collidesWithPill.y) ? collidesWithPill.y - 26 : collidesWithPill.y + 26;
+            // Immediate node card re-check to guarantee vertical displacement never enters a node card
+            const recheckCard = findCollidingNodeCard(mid.x, nextY, pillWidth, 24);
+            if (recheckCard) {
+              const cardCenterY = recheckCard.y + (recheckCard.height || 88) / 2;
+              nextY = (nextY <= cardCenterY) ? (recheckCard.y - 20) : (recheckCard.y + (recheckCard.height || 88) + 20);
             }
-          } else {
-            break;
+            candidateY = nextY;
+            adjusted = true;
           }
+
+          if (!adjusted) break;
         }
+        mid.y = candidateY;
         placedPills.push({ x: mid.x, y: mid.y, width: pillWidth, height: 24 });
 
         const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -2528,19 +2541,27 @@
     }
 
     function getNodeIcon(node) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       if (node.is_wip || node.status === 'wip' || node.id === 'working-directory-wip' || node.id === 'active-wip') {
-        return `<svg viewBox="0 0 24 24" fill="#f59e0b"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
+        svg.setAttribute('fill', '#f59e0b');
+        path.setAttribute('d', 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z');
+      } else if (node.is_head || node.status === 'head') {
+        svg.setAttribute('fill', '#10b981');
+        path.setAttribute('d', 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z');
+      } else if (node.is_merge || node.status === 'merge') {
+        svg.setAttribute('fill', '#a855f7');
+        path.setAttribute('d', 'M17 20.41L18.41 19 15 15.59 13.59 17 17 20.41zM7.5 4C6.12 4 5 5.12 5 6.5S6.12 9 7.5 9 10 7.88 10 6.5 8.88 4 7.5 4zm0 2c.28 0 .5.22.5.5s-.22.5-.5.5-.5-.22-.5-.5.22-.5.5-.5zm9 5c-1.38 0-2.5 1.12-2.5 2.5 0 1.05.66 1.95 1.58 2.31l-3.08 3.08c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l3.09-3.09c.36.92 1.26 1.58 2.31 1.58 1.38 0 2.5-1.12 2.5-2.5s-1.12-2.5-2.5-2.5zm0 3c-.28 0-.5-.22-.5-.5s.22-.5.5-.5.5.22.5.5-.22.5-.5.5z');
+      } else if (node.lane === 0) {
+        svg.setAttribute('fill', '#06b6d4');
+        path.setAttribute('d', 'M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z');
+      } else {
+        svg.setAttribute('fill', '#f97316');
+        path.setAttribute('d', 'M19 13v-2c-1.54.02-3.09-.75-4.07-1.83l-1.29-1.43C13.1 7.14 12.21 6.5 11.19 6.22A3.5 3.5 0 1 0 7 9.87V15a3.5 3.5 0 1 0 2 0v-4.13c.48.16.97.43 1.41.83l1.29 1.43c1.37 1.52 3.32 2.45 5.3 2.45v2.41l3.5-3.5L19 13z');
       }
-      if (node.is_head || node.status === 'head') {
-        return `<svg viewBox="0 0 24 24" fill="#10b981"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
-      }
-      if (node.is_merge || node.status === 'merge') {
-        return `<svg viewBox="0 0 24 24" fill="#a855f7"><path d="M17 20.41L18.41 19 15 15.59 13.59 17 17 20.41zM7.5 4C6.12 4 5 5.12 5 6.5S6.12 9 7.5 9 10 7.88 10 6.5 8.88 4 7.5 4zm0 2c.28 0 .5.22.5.5s-.22.5-.5.5-.5-.22-.5-.5.22-.5.5-.5zm9 5c-1.38 0-2.5 1.12-2.5 2.5 0 1.05.66 1.95 1.58 2.31l-3.08 3.08c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l3.09-3.09c.36.92 1.26 1.58 2.31 1.58 1.38 0 2.5-1.12 2.5-2.5s-1.12-2.5-2.5-2.5zm0 3c-.28 0-.5-.22-.5-.5s.22-.5.5-.5.5.22.5.5-.22.5-.5.5z"/></svg>`;
-      }
-      if (node.lane === 0) {
-        return `<svg viewBox="0 0 24 24" fill="#06b6d4"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>`;
-      }
-      return `<svg viewBox="0 0 24 24" fill="#f97316"><path d="M19 13v-2c-1.54.02-3.09-.75-4.07-1.83l-1.29-1.43C13.1 7.14 12.21 6.5 11.19 6.22A3.5 3.5 0 1 0 7 9.87V15a3.5 3.5 0 1 0 2 0v-4.13c.48.16.97.43 1.41.83l1.29 1.43c1.37 1.52 3.32 2.45 5.3 2.45v2.41l3.5-3.5L19 13z"/></svg>`;
+      svg.appendChild(path);
+      return svg;
     }
 
     function translateScope(scopeStr) {
@@ -2699,7 +2720,7 @@
       state.selectedNodeId = node.id;
       
       document.querySelectorAll('.n8n-node').forEach(el => el.classList.remove('selected'));
-      const activeCard = document.querySelector(`.n8n-node[data-id="${node.id}"]`);
+      const activeCard = Array.from(document.querySelectorAll('.n8n-node')).find(el => el.dataset.id === node.id);
       if (activeCard) activeCard.classList.add('selected');
 
       const isWip = Boolean(node.id === 'working-directory-wip' || node.id === 'active-wip' || node.is_wip || node.status === 'wip');
@@ -2719,7 +2740,7 @@
       msgEl.title = rawTitle;
 
       const tagBox = document.getElementById('drawer-branch-tags');
-      tagBox.innerHTML = '';
+      tagBox.replaceChildren();
       const primary = (state.dagData && state.dagData.primary_branch) || (state.dagData && state.dagData.nodes && state.dagData.nodes.some(n => n.branches && n.branches.includes('main')) ? 'main' : 'master');
       (node.branches || []).forEach(b => {
         const pill = document.createElement('span');
@@ -2743,7 +2764,7 @@
       const filesList = document.getElementById('drawer-files-list');
       const diffOutput = document.getElementById('drawer-diff-output');
       const fileCountEl = document.getElementById('drawer-files-count');
-      filesList.innerHTML = '';
+      filesList.replaceChildren();
 
       const diffEntry = (state.dagData.diffs && state.dagData.diffs[node.id]) || null;
       if (diffEntry && diffEntry.files && diffEntry.files.length) {
@@ -2775,43 +2796,66 @@
           };
           filesList.appendChild(item);
         });
-        diffOutput.innerHTML = formatUnifiedDiff(diffEntry.full_output);
+        diffOutput.replaceChildren(formatUnifiedDiff(diffEntry.full_output));
         diffOutput.scrollTop = 0;
         diffOutput.scrollLeft = 0;
       } else {
         fileCountEl.textContent = '0 files';
-        filesList.innerHTML = '<span style="font-size:12px; color:#64748b; padding:8px;">No file changes recorded for this commit.</span>';
-        diffOutput.innerHTML = '<div class="diff-line diff-meta" style="padding:16px;">Commit details only (no diff content).</div>';
+        const emptyFilesSpan = document.createElement('span');
+        emptyFilesSpan.style.cssText = 'font-size:12px; color:#64748b; padding:8px;';
+        emptyFilesSpan.textContent = 'No file changes recorded for this commit.';
+        filesList.replaceChildren(emptyFilesSpan);
+
+        const emptyDiffDiv = document.createElement('div');
+        emptyDiffDiv.className = 'diff-line diff-meta';
+        emptyDiffDiv.style.padding = '16px';
+        emptyDiffDiv.textContent = 'Commit details only (no diff content).';
+        diffOutput.replaceChildren(emptyDiffDiv);
         diffOutput.scrollTop = 0;
         diffOutput.scrollLeft = 0;
       }
     }
 
-    // Syntax-colorized Unified Diff Parser
+    // Syntax-colorized Unified Diff Parser (Safe DocumentFragment Construction)
     function formatUnifiedDiff(rawDiff) {
-      if (!rawDiff) return '<div class="diff-line diff-meta">No detailed diff snippet available.</div>';
+      const fragment = document.createDocumentFragment();
+      if (!rawDiff) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'diff-line diff-meta';
+        emptyDiv.textContent = 'No detailed diff snippet available.';
+        fragment.appendChild(emptyDiv);
+        return fragment;
+      }
       const lines = rawDiff.split('\n');
-      let out = '';
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        const escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const div = document.createElement('div');
         if (line.startsWith('diff --git')) {
-          out += `<div class="diff-line diff-file-header">📄 ${escaped}</div>`;
+          div.className = 'diff-line diff-file-header';
+          div.textContent = `📄 ${line}`;
         } else if (line.startsWith('=== Untracked')) {
-          out += `<div class="diff-line diff-file-header" style="color:#fbbf24; border-top: 1px dashed rgba(245,158,11,0.4); margin-top:16px;">📁 ${escaped}</div>`;
+          div.className = 'diff-line diff-file-header';
+          div.style.cssText = 'color:#fbbf24; border-top: 1px dashed rgba(245,158,11,0.4); margin-top:16px;';
+          div.textContent = `📁 ${line}`;
         } else if (line.startsWith('@@')) {
-          out += `<div class="diff-line diff-chunk-header">${escaped}</div>`;
+          div.className = 'diff-line diff-chunk-header';
+          div.textContent = line;
         } else if (line.startsWith('+') && !line.startsWith('+++')) {
-          out += `<div class="diff-line diff-added">${escaped}</div>`;
+          div.className = 'diff-line diff-added';
+          div.textContent = line;
         } else if (line.startsWith('-') && !line.startsWith('---')) {
-          out += `<div class="diff-line diff-removed">${escaped}</div>`;
+          div.className = 'diff-line diff-removed';
+          div.textContent = line;
         } else if (line.startsWith('commit ') || line.startsWith('Author:') || line.startsWith('AuthorDate:') || line.startsWith('Commit:') || line.startsWith('CommitDate:')) {
-          out += `<div class="diff-line diff-meta">${escaped}</div>`;
+          div.className = 'diff-line diff-meta';
+          div.textContent = line;
         } else {
-          out += `<div class="diff-line diff-context">${escaped}</div>`;
+          div.className = 'diff-line diff-context';
+          div.textContent = line;
         }
+        fragment.appendChild(div);
       }
-      return out;
+      return fragment;
     }
 
     // Drawer Controls (Close, Copy, Expand, Wrap, Resize)
@@ -3010,7 +3054,7 @@
             showCanvasError('Could Not Load Graph Data', 'Neither git_data.js nor demo_data.js could be populated. Please generate DAG data using python generate_dag.py.');
           }
         }, () => {
-          showCanvasError('Data Not Found', 'Could not load git_data.js or demo_data.js.<br>Please run <code>python generate_dag.py</code> inside your repository.');
+          showCanvasError('Data Not Found', 'Could not load git_data.js or demo_data.js.\nPlease run python generate_dag.py inside your repository.');
         });
       }
     }
@@ -3022,25 +3066,47 @@
         dataChip.style.color = '#f87171';
         dataChip.style.borderColor = 'rgba(248, 113, 113, 0.4)';
       }
-      nodesLayer.innerHTML = `
-        <div style="position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%);
-                    background: #1e222a; border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 12px;
-                    padding: 32px 40px; text-align: center; max-width: 520px; box-shadow: 0 16px 48px rgba(0,0,0,0.6);
-                    pointer-events: auto;">
-          <div style="width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%;
-                      background: rgba(248, 113, 113, 0.12); display: flex; align-items: center; justify-content: center;">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="#f87171">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-            </svg>
-          </div>
-          <h3 style="font-size: 18px; font-weight: 700; color: #f8fafc; margin-bottom: 8px;">${title}</h3>
-          <p style="font-size: 13px; color: #94a3b8; line-height: 1.6; margin-bottom: 20px;">${message}</p>
-          <button onclick="loadDAGData()" style="background: #06b6d4; color: #fff; border: none;
-                  padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
-            Retry Loading
-          </button>
-        </div>
-      `;
+
+      const card = document.createElement('div');
+      card.style.cssText = 'position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); ' +
+                           'background: #1e222a; border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 12px; ' +
+                           'padding: 32px 40px; text-align: center; max-width: 520px; box-shadow: 0 16px 48px rgba(0,0,0,0.6); ' +
+                           'pointer-events: auto;';
+
+      const iconBox = document.createElement('div');
+      iconBox.style.cssText = 'width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%; ' +
+                              'background: rgba(248, 113, 113, 0.12); display: flex; align-items: center; justify-content: center;';
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('width', '28');
+      svg.setAttribute('height', '28');
+      svg.setAttribute('fill', '#f87171');
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z');
+      svg.appendChild(path);
+      iconBox.appendChild(svg);
+
+      const h3 = document.createElement('h3');
+      h3.style.cssText = 'font-size: 18px; font-weight: 700; color: #f8fafc; margin-bottom: 8px;';
+      h3.textContent = title;
+
+      const p = document.createElement('p');
+      p.style.cssText = 'font-size: 13px; color: #94a3b8; line-height: 1.6; margin-bottom: 20px; white-space: pre-line;';
+      p.textContent = message;
+
+      const retryBtn = document.createElement('button');
+      retryBtn.style.cssText = 'background: #06b6d4; color: #fff; border: none; padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;';
+      retryBtn.textContent = 'Retry Loading';
+      retryBtn.addEventListener('click', loadDAGData);
+
+      card.appendChild(iconBox);
+      card.appendChild(h3);
+      card.appendChild(p);
+      card.appendChild(retryBtn);
+
+      nodesLayer.replaceChildren(card);
     }
 
     // Initialize on page load via Dynamic Dual Fallback Loader

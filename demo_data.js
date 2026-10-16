@@ -310,9 +310,12 @@ window.GIT_DAG_DATA = {
     },
     {
       "id": "active-wip",
+      "hash": "active-wip",
       "short_id": "WIP",
-      "title": "WIP: Uncommitted Changes (2 files)",
-      "author": "Working Tree",
+      "short_hash": "WIP",
+      "title": "Working Tree (2 uncommitted changes)",
+      "subject": "Working Tree (2 uncommitted changes)",
+      "author": "Local Working Directory",
       "author_full": "Local Working Tree <uncommitted>",
       "date": "2026-09-22T20:00:00",
       "branches": [
@@ -320,7 +323,7 @@ window.GIT_DAG_DATA = {
         "feature/stripe-v3"
       ],
       "tags": [],
-      "is_head": true,
+      "is_head": false,
       "is_wip": true,
       "is_merge": false,
       "parents": [
