@@ -69,6 +69,9 @@ This extracts the latest commit history from your repository and opens `index.ht
 
    # Or specify target repository path as argument:
    python generate_dag.py /path/to/your/git/repo
+
+   # Install automatic synchronous Git hooks (post-commit, post-checkout, post-merge, post-rewrite):
+   python generate_dag.py --install-hooks
    ```
 2. Open `index.html` in your browser:
    ```bash
@@ -132,6 +135,9 @@ This extracts the latest commit history from your repository and opens `index.ht
 
    # หรือระบุ Path ของ Git Repository ปลายทาง:
    python generate_dag.py C:/path/to/repo
+
+   # ติดตั้ง Git Hooks อัตโนมัติแบบ Synchronous (post-commit, post-checkout, post-merge, post-rewrite):
+   python generate_dag.py --install-hooks
    ```
 2. ดับเบิลคลิกเปิดไฟล์ `index.html` บนเบราว์เซอร์ (Chrome, Edge, Firefox, Brave ฯลฯ)
 

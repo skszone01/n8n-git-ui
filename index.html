@@ -1374,18 +1374,18 @@
       <div class="git-version-badge-group">
         <div class="git-version-pulse"></div>
         <span class="git-version-badge" id="hud-ver-badge">NEW UPDATE</span>
-        <span class="git-version-tag">v1.0.7</span>
+        <span class="git-version-tag">v1.0.8</span>
       </div>
       <button type="button" class="git-version-close" id="hud-ver-close" title="Close / ปิด">✕</button>
     </div>
-    <div class="git-version-title" id="hud-ver-title">n8n Git UI v1.0.7 Available!</div>
+    <div class="git-version-title" id="hud-ver-title">n8n Git UI v1.0.8 Available!</div>
     <div class="git-version-desc" id="hud-ver-desc">
-      Added channel-aware wire routing, DOM XSS & subprocess hardening, 6-layer data-leak guard, and 94 automated regression tests.
+      Added synchronous Job-Object-safe Git hooks (--install-hooks) and Windows file-lock retry so automated git commits never truncate git_data.js.
     </div>
     <div class="git-version-diff">
-      <span id="hud-cur-label">Current: <strong style="color:#94a3b8;">v1.0.6</strong></span>
+      <span id="hud-cur-label">Current: <strong style="color:#94a3b8;">v1.0.7</strong></span>
       <span>→</span>
-      <span id="hud-latest-label">Latest: <strong class="highlight">v1.0.7</strong></span>
+      <span id="hud-latest-label">Latest: <strong class="highlight">v1.0.8</strong></span>
     </div>
     <div class="git-version-actions">
       <a href="https://github.com/skszone01/n8n-git-ui" target="_blank" class="git-version-btn primary" id="hud-btn-download">Update n8n UI</a>
@@ -1425,7 +1425,7 @@
     // =========================================================================
     // Multi-Language (ENG / TH) & Version Checker Integration
     // =========================================================================
-    const CURRENT_APP_VERSION = "v1.0.7";
+    const CURRENT_APP_VERSION = "v1.0.8";
     let latestDetectedTag = null;
 
     const I18N_DICT = {
@@ -1454,8 +1454,8 @@
         drawer_expand_off: "Wide: Off",
         drawer_close: "Close Drawer",
         version_new: "NEW UPDATE",
-        version_title: "n8n Git UI v1.0.7 Available!",
-        version_desc: "Added channel-aware wire routing, DOM XSS & subprocess hardening, 6-layer data-leak guard, and 94 automated regression tests.",
+        version_title: "n8n Git UI v1.0.8 Available!",
+        version_desc: "Added synchronous Job-Object-safe Git hooks (--install-hooks) and Windows file-lock retry so automated git commits never truncate git_data.js.",
         version_cur: "Current",
         version_latest: "Latest",
         version_update_btn: "Update n8n UI",
@@ -1487,8 +1487,8 @@
         drawer_expand_off: "ขยายกว้าง: ปิด",
         drawer_close: "ปิดแถบข้าง",
         version_new: "อัปเดตใหม่",
-        version_title: "มีอัปเดต n8n Git UI v1.0.7!",
-        version_desc: "เดินสายไฟหลบการ์ดโหนด ปิดช่องโหว่ DOM XSS และ Git Subprocess พร้อมชุดทดสอบอัตโนมัติ 94 เคส",
+        version_title: "มีอัปเดต n8n Git UI v1.0.8!",
+        version_desc: "เพิ่มระบบติดตั้ง Git Hooks แบบ Synchronous (--install-hooks) ป้องกันเทอร์มินัลอัตโนมัติตัดจบก่อนเขียน git_data.js เสร็จ",
         version_cur: "ปัจจุบัน",
         version_latest: "ล่าสุด",
         version_update_btn: "อัปเดต n8n UI",

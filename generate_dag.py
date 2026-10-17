@@ -16,6 +16,8 @@ import json
 import subprocess
 import argparse
 import tempfile
+import time
+import stat
 from datetime import datetime
 from collections import deque
 
@@ -62,7 +64,8 @@ def write_atomic_file(target_path, content, encoding="utf-8"):
     """Atomically write content to target_path using tempfile.NamedTemporaryFile.
 
     Ensures data durability via flush() and os.fsync(fileno), closes file handle
-    prior to os.replace for Windows compatibility, and guarantees cleanup on failure.
+    prior to os.replace for Windows compatibility, retries on transient Windows
+    sharing violations, and guarantees cleanup on failure.
     """
     target_abs = os.path.abspath(target_path)
     target_dir = os.path.dirname(target_abs)
@@ -85,7 +88,14 @@ def write_atomic_file(target_path, content, encoding="utf-8"):
             os.fsync(tf.fileno())
         finally:
             tf.close()
-        os.replace(tmp_path, target_abs)
+        for attempt in range(5):
+            try:
+                os.replace(tmp_path, target_abs)
+                break
+            except PermissionError:
+                if attempt == 4:
+                    raise
+                time.sleep(0.05 * (attempt + 1))
     except Exception:
         if os.path.exists(tmp_path):
             try:
@@ -797,12 +807,50 @@ def generate(repo_path=None, max_count=None, output_path=None):
 
     print(f"Successfully generated {os.path.basename(target_output)} for repository '{os.path.basename(REPO_ROOT)}' ({len(nodes)} commits, {len(edges)} edges, {len(branches)} branches) at {datetime.now().strftime('%H:%M:%S')}")
 
+def install_git_hooks(repo_path=None):
+    """Install synchronous, Job-Object-safe Git hooks (post-commit, post-checkout, post-merge, post-rewrite)."""
+    target_repo = find_repo_root(repo_path)
+    common_dir_raw = run_git(["rev-parse", "--git-common-dir"], cwd=target_repo, check_err=False).strip()
+    if not common_dir_raw:
+        common_dir = os.path.join(target_repo, ".git")
+    elif os.path.isabs(common_dir_raw):
+        common_dir = common_dir_raw
+    else:
+        common_dir = os.path.abspath(os.path.join(target_repo, common_dir_raw))
+
+    hooks_dir = os.path.join(common_dir, "hooks")
+    os.makedirs(hooks_dir, exist_ok=True)
+
+    hook_body = (
+        "#!/bin/sh\n"
+        "# Auto-update n8n Git UI data (runs synchronously so automated terminals do not kill child processes before git_data.js is written)\n"
+        'COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null || echo .git)"\n'
+        'python "$COMMON_DIR/n8n-git-ui/generate_dag.py" > /dev/null 2>&1 || true\n'
+    )
+
+    hook_names = ["post-commit", "post-checkout", "post-merge", "post-rewrite"]
+    for h_name in hook_names:
+        h_path = os.path.join(hooks_dir, h_name)
+        write_atomic_file(h_path, hook_body, encoding="utf-8")
+        try:
+            st = os.stat(h_path)
+            os.chmod(h_path, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        except OSError:
+            pass
+
+    print(f"Installed synchronous Git hooks ({', '.join(hook_names)}) in {hooks_dir}")
+    return hooks_dir
+
 def main():
     parser = argparse.ArgumentParser(description="Standalone Git DAG Generator for n8n-style UI")
     parser.add_argument("repo_path", nargs="?", default=None, help="Path to Git repository (optional)")
     parser.add_argument("-n", "--max-count", type=int, default=None, help="Limit commit count (default: all commits)")
     parser.add_argument("-o", "--output", default=None, help="Output JS file path (default: git_data.js)")
+    parser.add_argument("--install-hooks", action="store_true", help="Install synchronous Git hooks (post-commit, post-checkout, post-merge, post-rewrite)")
     args = parser.parse_args()
+
+    if args.install_hooks:
+        install_git_hooks(repo_path=args.repo_path)
 
     generate(repo_path=args.repo_path, max_count=args.max_count, output_path=args.output)
 
