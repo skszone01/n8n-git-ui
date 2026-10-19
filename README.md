@@ -27,6 +27,7 @@
 - **🔍 Instant Search & Filtering**: Real-time fuzzy searching across commit hashes, commit subjects, authors, and branch names.
 - **📑 Integrated Diff Drawer**: Click any commit node or WIP card to open a slide-out drawer with full commit metadata, file status badges (Added, Modified, Deleted), and syntax-highlighted unified diffs with line wrapping and clipboard copy.
 - **🔨 Working Directory (WIP) Tracking**: Automatically detects uncommitted working tree changes (`git status --porcelain`) and renders an active WIP node connected to HEAD.
+- **🛡️ Worktree Isolation & Foxtrot Merge Guard**: Automatically strips linked-worktree `GIT_DIR` / `GIT_INDEX_FILE` overrides during hook execution, prevents reverse-parent ("foxtrot") merges from hijacking Lane 0, and flags criss-cross duplicate merges.
 - **🗺️ Interactive Canvas Navigation**: Smooth pan, zoom (mouse wheel / touchpad), minimap preview, and one-click "Fit to View".
 
 ---
@@ -114,6 +115,7 @@ This extracts the latest commit history from your repository and opens `index.ht
 - **🔍 ระบบค้นหาแบบเรียลไทม์**: ค้นหา Commit SHA, ข้อความ Commit, ชื่อผู้เขียน, หรือชื่อ Branch ได้ทันทีขณะพิมพ์
 - **📑 แผงดู Diff ในตัว (Slide Drawer)**: คลิกเลือก Commit เพื่อดูรายการไฟล์ที่เปลี่ยนแปลง พร้อมหน้าต่างโค้ด Diff แสดงไฮไลต์สีเขียว/แดง และปุ่มคัดลอก SHA/Path
 - **🔨 ตรวจจับงานที่ยังไม่ Commit (WIP Detection)**: สแกน Working Directory อัตโนมัติ หากมีไฟล์ที่แก้ไขค้างอยู่ จะสร้างโหนด "WIP" แสดงต่อจาก HEAD ทันที
+- **🛡️ ป้องกันปัญหา Worktree & Foxtrot Merge**: ล้างตัวแปร `GIT_DIR` / `GIT_INDEX_FILE` ของ Linked Worktree อัตโนมัติเมื่อรันผ่าน Git Hook ไม่ให้แย่ง `HEAD` หรือสร้างจำนวนไฟล์เพี้ยน ป้องกันการสลับสายหลักเมื่อเกิด Foxtrot Merge และแจ้งเตือนเมื่อมีคอมมิตผสานซ้ำ (Duplicate Merge)
 - **🗺️ ควบคุม Canvas อิสระ**: เลื่อน Pan, ซูมเข้า-ออก (Zoom In/Out), ย่อ-ขยายหน้าจอ และมีปุ่ม Fit to View ปรับมุมมองให้อยู่ในหน้าจอพอดี
 
 ---

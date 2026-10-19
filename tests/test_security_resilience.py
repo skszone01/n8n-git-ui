@@ -523,5 +523,113 @@ class TestAtomicFileOperationsAndResilience(unittest.TestCase):
         self.assertEqual(len(os.listdir(self.test_dir)), 0, "Temporary file was not cleaned up after fsync error")
 
 
+class TestWorktreeIsolationAndFoxtrotGuard(unittest.TestCase):
+    """Verify worktree GIT_DIR/GIT_INDEX_FILE isolation, foxtrot-merge trunk guard, and duplicate merge detection."""
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp(prefix="n8n_test_wt_")
+        self.output_js = os.path.join(self.test_dir, "output.js")
+        run_git_in_repo(["init", "-b", "master"], self.test_dir)
+        run_git_in_repo(["config", "user.name", "Tester"], self.test_dir)
+        run_git_in_repo(["config", "user.email", "tester@example.com"], self.test_dir)
+
+    def tearDown(self):
+        if os.path.exists(self.test_dir):
+            shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    def test_worktree_env_vars_do_not_hijack_primary_head_or_wip(self):
+        """Verify GIT_DIR and GIT_INDEX_FILE from a linked worktree cannot poison primary repo HEAD or dirty count."""
+        f1 = os.path.join(self.test_dir, "a.txt")
+        with open(f1, "w", encoding="utf-8") as f:
+            f.write("base\n")
+        run_git_in_repo(["add", "a.txt"], self.test_dir)
+        run_git_in_repo(["commit", "-m", "Root commit on master"], self.test_dir)
+
+        run_git_in_repo(["checkout", "-b", "feature/active-main"], self.test_dir)
+        with open(f1, "a", encoding="utf-8") as f:
+            f.write("active work\n")
+        run_git_in_repo(["commit", "-am", "Active branch commit"], self.test_dir)
+
+        wt_dir = os.path.join(self.test_dir, "_wt_bg")
+        run_git_in_repo(["worktree", "add", "-b", "feature/bg-wt", wt_dir, "master"], self.test_dir)
+
+        wt_git_dir = os.path.join(self.test_dir, ".git", "worktrees", "_wt_bg")
+        poisoned_env = os.environ.copy()
+        poisoned_env["GIT_DIR"] = wt_git_dir
+        poisoned_env["GIT_INDEX_FILE"] = os.path.join(wt_git_dir, "index")
+
+        res = subprocess.run(
+            [sys.executable, GENERATE_DAG_SCRIPT, self.test_dir, "-o", self.output_js],
+            cwd=wt_dir,
+            env=poisoned_env,
+            capture_output=True,
+            text=True,
+            encoding="utf-8"
+        )
+        self.assertEqual(res.returncode, 0, f"generate_dag.py failed:\n{res.stderr}")
+
+        with open(self.output_js, "r", encoding="utf-8") as f:
+            bundle = json.loads(f.read().split("window.GIT_DAG_DATA = ")[1].rstrip(";\n "))
+
+        self.assertEqual(bundle["head_branch"], "feature/active-main")
+        self.assertEqual(bundle["stats"]["linked_worktrees"], 1)
+
+    def test_foxtrot_merge_keeps_master_on_lane_zero_and_flags_duplicate_merge(self):
+        """Verify foxtrot merge (`Merge branch 'master' into feature/...`) keeps master trunk on Lane 0 and flags duplicate merges."""
+        f1 = os.path.join(self.test_dir, "base.txt")
+        with open(f1, "w", encoding="utf-8") as f:
+            f.write("v1\n")
+        run_git_in_repo(["add", "base.txt"], self.test_dir)
+        c_root = run_git_in_repo(["commit", "-m", "Root master"], self.test_dir)
+        c_root_sha = run_git_in_repo(["rev-parse", "HEAD"], self.test_dir)
+
+        # Create side branch feature/side
+        run_git_in_repo(["checkout", "-b", "feature/side"], self.test_dir)
+        with open(os.path.join(self.test_dir, "side.txt"), "w", encoding="utf-8") as f:
+            f.write("side\n")
+        run_git_in_repo(["add", "side.txt"], self.test_dir)
+        run_git_in_repo(["commit", "-m", "Side commit"], self.test_dir)
+        c_side_sha = run_git_in_repo(["rev-parse", "HEAD"], self.test_dir)
+
+        # Advance master
+        run_git_in_repo(["checkout", "master"], self.test_dir)
+        with open(f1, "a", encoding="utf-8") as f:
+            f.write("v2\n")
+        run_git_in_repo(["commit", "-am", "Master commit 2"], self.test_dir)
+        c_master2_sha = run_git_in_repo(["rev-parse", "HEAD"], self.test_dir)
+
+        # Create canonical merge on feature/main-work (parents: c_master2_sha, c_side_sha)
+        run_git_in_repo(["checkout", "-b", "feature/main-work", "master"], self.test_dir)
+        run_git_in_repo(["merge", "--no-ff", "feature/side", "-m", f"Merge commit '{c_side_sha}' into feature/main-work"], self.test_dir)
+
+        # Create foxtrot merge on feature/side (parents: c_side_sha, c_master2_sha) and fast-forward master to it
+        run_git_in_repo(["checkout", "feature/side"], self.test_dir)
+        run_git_in_repo(["merge", "--no-ff", "master", "-m", "Merge branch 'master' into feature/side"], self.test_dir)
+        c_foxtrot_sha = run_git_in_repo(["rev-parse", "HEAD"], self.test_dir)
+        run_git_in_repo(["branch", "-f", "master", c_foxtrot_sha], self.test_dir)
+        run_git_in_repo(["checkout", "feature/main-work"], self.test_dir)
+
+        res = subprocess.run(
+            [sys.executable, GENERATE_DAG_SCRIPT, self.test_dir, "-o", self.output_js],
+            cwd=self.test_dir,
+            capture_output=True,
+            text=True,
+            encoding="utf-8"
+        )
+        self.assertEqual(res.returncode, 0)
+
+        with open(self.output_js, "r", encoding="utf-8") as f:
+            bundle = json.loads(f.read().split("window.GIT_DAG_DATA = ")[1].rstrip(";\n "))
+
+        node_by_id = {n["id"]: n for n in bundle["nodes"]}
+        # True master commits must remain on Lane 0 despite foxtrot merge
+        self.assertEqual(node_by_id[c_root_sha]["lane"], 0)
+        self.assertEqual(node_by_id[c_master2_sha]["lane"], 0)
+        # Side commit must NOT hijack Lane 0
+        self.assertNotEqual(node_by_id[c_side_sha]["lane"], 0)
+        # Redundant foxtrot twin must be flagged as duplicate merge
+        self.assertTrue(node_by_id[c_foxtrot_sha].get("is_duplicate_merge"))
+
+
 if __name__ == "__main__":
     unittest.main()

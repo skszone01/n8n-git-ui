@@ -18,38 +18,73 @@ import argparse
 import tempfile
 import time
 import stat
+import re
 from datetime import datetime
 from collections import deque
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_JS = os.path.join(CURRENT_DIR, "git_data.js")
 
+# Git environment variables exported during hooks (especially inside linked worktrees)
+# that would otherwise override `git -C <repo_root>` and hijack HEAD / index / status.
+GIT_CONTEXT_ENV_VARS = (
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_COMMON_DIR",
+    "GIT_PREFIX",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+)
+
+def _resolve_linked_worktree_to_main(path_cand):
+    """If path_cand has a .git file pointing to ../.git/worktrees/<name>, resolve main repo root."""
+    git_marker = os.path.join(path_cand, ".git")
+    if os.path.isfile(git_marker):
+        try:
+            with open(git_marker, "r", encoding="utf-8", errors="replace") as f:
+                line = f.readline().strip()
+            if line.lower().startswith("gitdir:"):
+                gitdir_raw = line.split(":", 1)[1].strip()
+                gitdir_abs = gitdir_raw if os.path.isabs(gitdir_raw) else os.path.abspath(os.path.join(path_cand, gitdir_raw))
+                norm = gitdir_abs.replace("\\", "/")
+                if "/.git/worktrees/" in norm:
+                    common_git = norm.split("/.git/worktrees/")[0] + "/.git"
+                    main_root = os.path.dirname(os.path.abspath(common_git))
+                    if os.path.isdir(main_root):
+                        return main_root
+        except OSError:
+            pass
+    return path_cand
+
 def find_repo_root(custom_path=None):
     if custom_path and os.path.isdir(custom_path):
-        return os.path.abspath(custom_path)
+        return _resolve_linked_worktree_to_main(os.path.abspath(custom_path))
     candidate_parent2 = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
     candidate_parent1 = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
     if os.path.exists(os.path.join(candidate_parent2, ".git")):
-        return candidate_parent2
+        return _resolve_linked_worktree_to_main(candidate_parent2)
     elif os.path.exists(os.path.join(candidate_parent1, ".git")):
-        return candidate_parent1
+        return _resolve_linked_worktree_to_main(candidate_parent1)
     elif os.path.exists(os.path.join(CURRENT_DIR, ".git")):
-        return CURRENT_DIR
+        return _resolve_linked_worktree_to_main(CURRENT_DIR)
     else:
-        return os.getcwd()
+        return _resolve_linked_worktree_to_main(os.getcwd())
 
 REPO_ROOT = find_repo_root()
 
 def run_git(args, cwd=None, check_err=True):
-    """Run a git command in REPO_ROOT (or cwd) and return stdout."""
+    """Run a git command in REPO_ROOT (or cwd) with worktree-clean environment and return stdout."""
     target_dir = cwd or REPO_ROOT
+    clean_env = {k: v for k, v in os.environ.items() if k not in GIT_CONTEXT_ENV_VARS}
     try:
         res = subprocess.run(
             ["git", "-c", "core.quotepath=false", "-C", target_dir] + args,
             capture_output=True,
             text=True,
             encoding="utf-8",
-            errors="replace"
+            errors="replace",
+            env=clean_env
         )
         if res.returncode != 0 and check_err:
             err_msg = res.stderr.strip() if res.stderr else f"exit code {res.returncode}"
@@ -246,7 +281,7 @@ def generate(repo_path=None, max_count=None, output_path=None):
             "is_merge": len(parents) >= 2
         }
 
-    # 5. Primary Trunk Line (Lane 0) Detection
+    # 5. Primary Trunk Line (Lane 0) Detection (Foxtrot-Merge Resistant)
     primary_branch = "main"
     for cand in ["main", "master", head_branch]:
         if cand and cand != "DETACHED" and cand in branches:
@@ -257,7 +292,35 @@ def generate(repo_path=None, max_count=None, output_path=None):
 
     primary_ref = f"refs/heads/{primary_branch}" if (primary_branch in branches and not primary_branch.startswith("refs/")) else primary_branch
     primary_shas_raw = run_git(["rev-list", "--first-parent", primary_ref, "--"])
-    primary_shas = [s.strip() for s in primary_shas_raw.splitlines() if s.strip() and s.strip() in commits]
+    first_parent_shas = [s.strip() for s in primary_shas_raw.splitlines() if s.strip() and s.strip() in commits]
+
+    # Guard against Foxtrot Merges (e.g., `Merge branch 'master' into feature/...` fast-forwarded onto master)
+    # where parents[0] is the feature branch and parents[1] is the true primary trunk.
+    foxtrot_re = re.compile(
+        rf"^Merge branch\s+['\"]?(?:origin/)?{re.escape(primary_branch)}['\"]?\s+into\s+",
+        re.IGNORECASE
+    )
+    primary_tip = branches.get(primary_branch, {}).get("hash")
+    if primary_tip and primary_tip in commits:
+        walk_shas = []
+        visited_trunk = set()
+        curr_sha = primary_tip
+        while curr_sha and curr_sha in commits and curr_sha not in visited_trunk:
+            visited_trunk.add(curr_sha)
+            walk_shas.append(curr_sha)
+            c_parents = commits[curr_sha].get("parents", [])
+            if not c_parents:
+                break
+            next_sha = c_parents[0]
+            if len(c_parents) >= 2:
+                c_subj = commits[curr_sha].get("subject", "")
+                if foxtrot_re.search(c_subj) and c_parents[1] in commits:
+                    next_sha = c_parents[1]
+            curr_sha = next_sha
+        primary_shas = walk_shas if walk_shas else first_parent_shas
+    else:
+        primary_shas = first_parent_shas
+
     primary_highway_ordered = list(reversed(primary_shas))
     primary_highway_shas = set(primary_shas)
 
@@ -329,7 +392,8 @@ def generate(repo_path=None, max_count=None, output_path=None):
     for m in primary_highway_ordered:
         parents = commits.get(m, {}).get("parents", [])
         if len(parents) >= 2:
-            for p_side in parents[1:]:
+            side_parents = [p for p in parents if p not in primary_highway_shas] or parents[1:]
+            for p_side in side_parents:
                 b_shas, fork_sha = get_branch_commits_and_fork(p_side)
                 new_b_shas = [c for c in b_shas if c not in assigned_shas and c in topo_index]
                 if new_b_shas:
@@ -483,6 +547,30 @@ def generate(repo_path=None, max_count=None, output_path=None):
     else:
         BASE_Y = 320 + 2 * (NODE_HEIGHT + Y_SPACING)
 
+    # Detect Criss-Cross / Equivalent Duplicate Merges (multiple merge commits with identical parent sets)
+    merge_groups = {}
+    for c in sorted_commits:
+        c_parents = commits[c].get("parents", [])
+        if len(c_parents) >= 2 and len(set(c_parents)) >= 2:
+            merge_groups.setdefault(frozenset(c_parents), []).append(c)
+
+    duplicate_merge_map = {}
+    for pset, group in merge_groups.items():
+        if len(group) > 1:
+            group_sorted = sorted(
+                group,
+                key=lambda sha: (
+                    0 if commits[sha].get("is_head") else 1,
+                    0 if commit_lane.get(sha, 99) == 0 else 1,
+                    1 if foxtrot_re.search(commits[sha].get("subject", "")) else 0,
+                    topo_index.get(sha, 0)
+                )
+            )
+            canonical_sha = group_sorted[0]
+            canonical_short = commits[canonical_sha]["short_hash"]
+            for dup_sha in group_sorted[1:]:
+                duplicate_merge_map[dup_sha] = canonical_short
+
     nodes = []
     coords = {}
 
@@ -500,7 +588,8 @@ def generate(repo_path=None, max_count=None, output_path=None):
         elif c_data["is_merge"]:
             status = "merge"
 
-        nodes.append({
+        dup_of = duplicate_merge_map.get(c)
+        node_obj = {
             "id": c,
             "hash": c,
             "short_id": c_data["short_hash"],
@@ -524,7 +613,11 @@ def generate(repo_path=None, max_count=None, output_path=None):
             "is_head": c_data["is_head"],
             "is_merge": c_data["is_merge"],
             "is_wip": False
-        })
+        }
+        if dup_of:
+            node_obj["is_duplicate_merge"] = True
+            node_obj["duplicate_of"] = dup_of
+        nodes.append(node_obj)
 
     # 8. Dynamic WIP Node for Current Active Branch Working Directory
     active_wip_id = None
@@ -767,6 +860,10 @@ def generate(repo_path=None, max_count=None, output_path=None):
     merged_to_primary_raw = run_git(["branch", "--merged", primary_ref, "--"])
     merged_to_primary = set([b.strip().lstrip("*+").strip() for b in merged_to_primary_raw.splitlines() if b.strip()])
 
+    wt_raw = run_git(["worktree", "list", "--porcelain"], check_err=False)
+    wt_count = sum(1 for line in wt_raw.splitlines() if line.startswith("worktree "))
+    linked_worktrees = max(0, wt_count - 1)
+
     bundle = {
         "schema_version": 2,
         "repo": os.path.basename(REPO_ROOT),
@@ -794,7 +891,9 @@ def generate(repo_path=None, max_count=None, output_path=None):
         "stats": {
             "total_commits": len(nodes),
             "total_branches": len(branches),
-            "total_lanes": total_lanes
+            "total_lanes": total_lanes,
+            "linked_worktrees": linked_worktrees,
+            "duplicate_merges": len(duplicate_merge_map)
         },
         "nodes": nodes,
         "edges": edges,
@@ -823,8 +922,9 @@ def install_git_hooks(repo_path=None):
 
     hook_body = (
         "#!/bin/sh\n"
-        "# Auto-update n8n Git UI data (runs synchronously so automated terminals do not kill child processes before git_data.js is written)\n"
+        "# Auto-update n8n Git UI data (runs synchronously and strips linked-worktree GIT_DIR/GIT_INDEX_FILE overrides)\n"
         'COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null || echo .git)"\n'
+        "unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX\n"
         'python "$COMMON_DIR/n8n-git-ui/generate_dag.py" > /dev/null 2>&1 || true\n'
     )
 
