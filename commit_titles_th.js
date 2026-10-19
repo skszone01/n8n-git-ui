@@ -551,5 +551,11 @@ window.COMMIT_TITLES_TH = {
   "f07b50ef": "แก้ไข(เควสต์): ย้ายพาธ questtext.csv ไปยัง data/glogic/quest/questtext.csv และ Quest.rcc",
   "f07b50e": "แก้ไข(เควสต์): ย้ายพาธ questtext.csv ไปยัง data/glogic/quest/questtext.csv และ Quest.rcc",
   "907191b7": "ผสานคอมมิต #f07b50e (แก้ไขพาธ questtext.csv) เข้าสู่กิ่ง feature/plan-170-cross-platform-patch-builder-and-integrity",
-  "907191b": "ผสานคอมมิต #f07b50e (แก้ไขพาธ questtext.csv) เข้าสู่กิ่ง feature/plan-170-cross-platform-patch-builder-and-integrity"
+  "907191b": "ผสานคอมมิต #f07b50e (แก้ไขพาธ questtext.csv) เข้าสู่กิ่ง feature/plan-170-cross-platform-patch-builder-and-integrity",
+  "6e8cba43": "[Plan 170] เครื่องมือสร้างแพตช์ GUI/CLI ข้ามแพลตฟอร์ม, คอนฟิก patch.ini, เครือข่าย HTTPS/DNS Subpath และตรวจความถูกต้อง SHA-256/Ed25519 ครบ 5 OS",
+  "6e8cba4": "[Plan 170] เครื่องมือสร้างแพตช์ GUI/CLI ข้ามแพลตฟอร์ม, คอนฟิก patch.ini, เครือข่าย HTTPS/DNS Subpath และตรวจความถูกต้อง SHA-256/Ed25519 ครบ 5 OS",
+  "6697c5f7": "[Plan 171] แก้ไข RanRHI Shader Preflight ครบ 5 แพลตฟอร์ม, ตัวนับ 13 โปรแกรม, ตัวโหลด POSIX/Mobile VFS, คอมไพล์ Shader ครบ 5 โปรไฟล์ และ Deploy สู่ Core EP7",
+  "6697c5f": "[Plan 171] แก้ไข RanRHI Shader Preflight ครบ 5 แพลตฟอร์ม, ตัวนับ 13 โปรแกรม, ตัวโหลด POSIX/Mobile VFS, คอมไพล์ Shader ครบ 5 โปรไฟล์ และ Deploy สู่ Core EP7",
+  "fd39293c": "ผสานสายกิ่ง 'feature/plan-170-cross-platform-patch-builder-and-integrity' (แผน 170 ระบบแพตช์ 5 OS & แผน 171 แก้ไข Shader Preflight ครบ 5 โปรไฟล์) เข้าสู่ master",
+  "fd39293": "ผสานสายกิ่ง 'feature/plan-170-cross-platform-patch-builder-and-integrity' (แผน 170 ระบบแพตช์ 5 OS & แผน 171 แก้ไข Shader Preflight ครบ 5 โปรไฟล์) เข้าสู่ master"
 };
