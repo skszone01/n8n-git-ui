@@ -156,7 +156,7 @@ def compute_cable_route(x_start, y_start, p_lane, x_end, y_end, c_lane, x_spacin
     lane_diff = abs(p_lane - c_lane)
 
     # F4: Channel-aware routing for multi-lane spans crossing intermediate columns
-    if lane_diff >= 2 and span > x_spacing + 10:
+    if lane_diff >= 1 and span > x_spacing + 10:
         ch_w = min(float(x_spacing), span * 0.45)
         dx = ch_w * 0.45
         if abs(c_lane) > abs(p_lane):
