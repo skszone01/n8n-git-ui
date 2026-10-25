@@ -300,6 +300,10 @@ def generate(repo_path=None, max_count=None, output_path=None):
         rf"^Merge branch\s+['\"]?(?:origin/)?{re.escape(primary_branch)}['\"]?\s+into\s+",
         re.IGNORECASE
     )
+    into_primary_re = re.compile(
+        rf"\binto\s+['\"]?(?:origin/)?{re.escape(primary_branch)}['\"]?\b",
+        re.IGNORECASE
+    )
     primary_tip = branches.get(primary_branch, {}).get("hash")
     if primary_tip and primary_tip in commits:
         walk_shas = []
@@ -312,9 +316,15 @@ def generate(repo_path=None, max_count=None, output_path=None):
             if not c_parents:
                 break
             next_sha = c_parents[0]
-            if len(c_parents) >= 2:
+            if len(c_parents) >= 2 and c_parents[1] in commits:
                 c_subj = commits[curr_sha].get("subject", "")
-                if foxtrot_re.search(c_subj) and c_parents[1] in commits:
+                p0_subj = commits.get(c_parents[0], {}).get("subject", "")
+                p1_subj = commits.get(c_parents[1], {}).get("subject", "")
+                if foxtrot_re.search(c_subj):
+                    next_sha = c_parents[1]
+                elif (not into_primary_re.search(c_subj)
+                      and into_primary_re.search(p1_subj)
+                      and not into_primary_re.search(p0_subj)):
                     next_sha = c_parents[1]
             curr_sha = next_sha
         primary_shas = walk_shas if walk_shas else first_parent_shas
@@ -693,7 +703,7 @@ def generate(repo_path=None, max_count=None, output_path=None):
             if not p_display_name or p_display_name == "branch":
                 p_display_name = p[:7]
 
-            is_merge_edge = (p_lane != 0 and c_lane == 0) or (c_data["is_merge"] and idx >= 1)
+            is_merge_edge = (p_lane != 0 and c_lane == 0) or (c_data["is_merge"] and idx >= 1 and not (p_lane == 0 and c_lane == 0))
 
             if is_merge_edge:
                 edge_type = "merge"
@@ -923,12 +933,13 @@ def install_git_hooks(repo_path=None):
     hook_body = (
         "#!/bin/sh\n"
         "# Auto-update n8n Git UI data (runs synchronously and strips linked-worktree GIT_DIR/GIT_INDEX_FILE overrides)\n"
+        'if [ "$(basename "$0")" = "reference-transaction" ] && [ "$1" != "committed" ]; then exit 0; fi\n'
         'COMMON_DIR="$(git rev-parse --git-common-dir 2>/dev/null || echo .git)"\n'
         "unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_PREFIX\n"
         'python "$COMMON_DIR/n8n-git-ui/generate_dag.py" > /dev/null 2>&1 || true\n'
     )
 
-    hook_names = ["post-commit", "post-checkout", "post-merge", "post-rewrite"]
+    hook_names = ["post-commit", "post-checkout", "post-merge", "post-rewrite", "reference-transaction"]
     for h_name in hook_names:
         h_path = os.path.join(hooks_dir, h_name)
         write_atomic_file(h_path, hook_body, encoding="utf-8")

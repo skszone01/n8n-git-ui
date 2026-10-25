@@ -557,5 +557,9 @@ window.COMMIT_TITLES_TH = {
   "6697c5f7": "[Plan 171] แก้ไข RanRHI Shader Preflight ครบ 5 แพลตฟอร์ม, ตัวนับ 13 โปรแกรม, ตัวโหลด POSIX/Mobile VFS, คอมไพล์ Shader ครบ 5 โปรไฟล์ และ Deploy สู่ Core EP7",
   "6697c5f": "[Plan 171] แก้ไข RanRHI Shader Preflight ครบ 5 แพลตฟอร์ม, ตัวนับ 13 โปรแกรม, ตัวโหลด POSIX/Mobile VFS, คอมไพล์ Shader ครบ 5 โปรไฟล์ และ Deploy สู่ Core EP7",
   "fd39293c": "ผสานสายกิ่ง 'feature/plan-170-cross-platform-patch-builder-and-integrity' (แผน 170 ระบบแพตช์ 5 OS & แผน 171 แก้ไข Shader Preflight ครบ 5 โปรไฟล์) เข้าสู่ master",
-  "fd39293": "ผสานสายกิ่ง 'feature/plan-170-cross-platform-patch-builder-and-integrity' (แผน 170 ระบบแพตช์ 5 OS & แผน 171 แก้ไข Shader Preflight ครบ 5 โปรไฟล์) เข้าสู่ master"
+  "fd39293": "ผสานสายกิ่ง 'feature/plan-170-cross-platform-patch-builder-and-integrity' (แผน 170 ระบบแพตช์ 5 OS & แผน 171 แก้ไข Shader Preflight ครบ 5 โปรไฟล์) เข้าสู่ master",
+  "0ff28adbc67cbfa77f86a02a3a8ee09324f9d2eb": "[Plan 177] ตรวจสอบและซ่อมแซมการตัดถ่ายแอสเซ็ต GLB & PNG ของไคลเอนต์ 100% (โหมด Strict, กู้คืน PNG 2,001 ไฟล์, Slim GLB และ Shader ครบ 5 โปรไฟล์)",
+  "0ff28adb": "[Plan 177] ตรวจสอบและซ่อมแซมการตัดถ่ายแอสเซ็ต GLB & PNG ของไคลเอนต์ 100% (โหมด Strict, กู้คืน PNG 2,001 ไฟล์, Slim GLB และ Shader ครบ 5 โปรไฟล์)",
+  "0ff28ad": "[Plan 177] ตรวจสอบและซ่อมแซมการตัดถ่ายแอสเซ็ต GLB & PNG ของไคลเอนต์ 100% (โหมด Strict, กู้คืน PNG 2,001 ไฟล์, Slim GLB และ Shader ครบ 5 โปรไฟล์)",
+  "feat(plan-177): client GLB & PNG asset cutover completeness audit and fix": "[Plan 177] ตรวจสอบและซ่อมแซมการตัดถ่ายแอสเซ็ต GLB & PNG ของไคลเอนต์ 100% (โหมด Strict, กู้คืน PNG 2,001 ไฟล์, Slim GLB และ Shader ครบ 5 โปรไฟล์)"
 };

@@ -1416,7 +1416,7 @@
     const state = {
       dagData: window.GIT_DAG_DATA || null,
       dataSourceMode: null, // 'live' | 'demo'
-      livePollingActive: false,
+      livePollingActive: true,
       selectedNodeId: null,
       panX: 50,
       panY: 50,
@@ -3001,7 +3001,9 @@
     // Only poll git_data.js if URL contains ?live=1 or #live or if user toggles live mode.
     // Interval is set to 5000ms (5s).
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('live') === '1' || window.location.hash.includes('live')) {
+    if (urlParams.get('live') === '0') {
+      state.livePollingActive = false;
+    } else {
       state.livePollingActive = true;
     }
 
